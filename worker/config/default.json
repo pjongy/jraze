@@ -1,0 +1,14 @@
+{
+  "push_worker": {
+    "firebase": {
+      "server_key": ""
+    },
+    "pool_size": "5",
+    "redis": {
+      "host": "localhost",
+      "notification_queue": {
+        "database": "0"
+      }
+    }
+  }
+}

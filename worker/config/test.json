@@ -1,0 +1,10 @@
+{
+  "push_worker": {
+    "firebase": {
+      "server_key": "test"
+    },
+    "redis": {
+      "host": "localhost"
+    }
+  }
+}
