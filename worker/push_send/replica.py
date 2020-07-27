@@ -7,8 +7,8 @@ import deserialize
 
 from common.logger.logger import get_logger
 from common.structure.job import Job
-from worker.config import config
-from worker.fcm.messaging import FCM
+from worker.push_send.config import config
+from worker.push_send.fcm.messaging import FCM
 
 logger = get_logger(__name__)
 
