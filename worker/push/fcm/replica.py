@@ -6,9 +6,9 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
-from common.structure.job import Job
-from worker.push_send.config import config
-from worker.push_send.fcm.messaging import FCM
+from common.structure.job.fcm import FCMJob
+from worker.push.fcm.config import config
+from worker.push.fcm.external.fcm import FCM
 
 logger = get_logger(__name__)
 
@@ -31,12 +31,12 @@ class Replica:
     async def process_job(self, job_json):  # real worker if job published
         try:
             logger.debug(job_json)
-            job: Job = deserialize.deserialize(
-                Job, json.loads(job_json)
+            job: FCMJob = deserialize.deserialize(
+                FCMJob, json.loads(job_json)
             )
 
             sent, failed = await self.fcm.send_notification(
-                targets=job.registration_tokens,
+                targets=job.push_tokens,
                 title=job.title,
                 body=job.body,
                 image=job.image,

@@ -53,7 +53,7 @@ services:
   push-worker:
     build:
       context: .
-      dockerfile: worker/push_send/Dockerfile
+      dockerfile: worker/push/fcm/Dockerfile
     environment:
       ENV: dev
       PUSH_WORKER__REDIS__PASSWORD: redis_password

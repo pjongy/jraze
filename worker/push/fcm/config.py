@@ -6,7 +6,7 @@ from common.configutil import get_config
 
 
 class Config:
-    class PushWorker:
+    class FCMPushWorker:
         class Firebase:
             server_key: str
 
@@ -25,7 +25,7 @@ class Config:
         pool_size: str
         redis: Redis
 
-    push_worker: PushWorker
+    push_worker: FCMPushWorker
 
 
 config_path = f'{Path(__file__).resolve().parent}/config'
