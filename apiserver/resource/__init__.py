@@ -53,5 +53,5 @@ def convert_request(class_, dict_):
         )
     except TypeError as error:
         raise IncompleteParameterError(error)
-    except TypeConvertError as error:
+    except deserialize.exceptions.DeserializeException as error:
         raise TypeConvertError(error)
