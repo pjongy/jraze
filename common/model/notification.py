@@ -8,10 +8,11 @@ from common.model.mixin import TimestampMixin
 
 
 class NotificationStatus(enum.IntEnum):
-    CREATED = 0
-    SENT = 1
-    ERROR = 2
-    DELETED = 2
+    DRAFT = 0
+    LAUNCHED = 1
+    SENT = 2
+    ERROR = 3
+    DELETED = 4
 
 
 class Notification(Model, TimestampMixin):
