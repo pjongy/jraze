@@ -74,6 +74,9 @@ services:
     environment:
       ENV: dev
       RESULT_WORKER__POOL_SIZE: 1
+      RESULT_WORKER__MYSQL__HOST: 172.12.1.2
+      RESULT_WORKER__MYSQL__USER: root
+      RESULT_WORKER__MYSQL__PASSWORD: mysql_password
       RESULT_WORKER__REDIS__PASSWORD: redis_password
       RESULT_WORKER__REDIS__HOST: 172.12.1.3
     networks:

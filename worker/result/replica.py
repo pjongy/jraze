@@ -6,8 +6,10 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
+from common.storage.init import init_db
 from common.structure.job.result import ResultJob
 from worker.result.config import config
+from worker.result.repository.notification import increase_sent_count
 
 logger = get_logger(__name__)
 
@@ -33,11 +35,23 @@ class Replica:
             job: ResultJob = deserialize.deserialize(
                 ResultJob, json.loads(job_json)
             )
-            print(job.id)
+            affected_row = await increase_sent_count(
+                _id=job.id,
+                sent=job.sent,
+            )
+            logger.info(f'increased sent: {job.sent} for {job.id} / affected_row: {affected_row}')
         except Exception:
             logger.exception(f'Fatal Error! {job_json}')
 
     async def job(self):  # real working job
+        mysql_config = config.result_worker.mysql
+        await init_db(
+            host=mysql_config.host,
+            port=mysql_config.port,
+            user=mysql_config.user,
+            password=mysql_config.password,
+            db=mysql_config.database,
+        )
         self.redis_pool = await aioredis.create_pool(
             f'redis://{self.redis_host}:{self.redis_port}',
             password=self.redis_password,
