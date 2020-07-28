@@ -1,5 +1,7 @@
 import datetime
-from typing import List
+from typing import List, Tuple
+
+from tortoise.query_utils import Q
 
 from common.model.notification import Notification, NotificationStatus
 from common.util import utc_now
@@ -23,18 +25,23 @@ def notification_model_to_dict(row: Notification):
 
 
 async def find_notifications_by_status(
-    status: NotificationStatus,
-    start: int,
-    size: int,
+    status: NotificationStatus = None,
+    start: int = 0,
+    size: int = 10,
     order_bys: List[str] = ()
-) -> List[Notification]:
-    query_set = Notification.filter(
-        status=status
-    )
+) -> Tuple[int, List[Notification]]:
+    notification_filter = Q()
+    if NotificationStatus is not None:
+        notification_filter = Q(status=status)
+
+    query_set = Notification.filter(notification_filter)
     for order_by in order_bys:
         if order_by.isascii():
             query_set = query_set.order_by(order_by)
-    return await query_set.offset(start).limit(size).all()
+    return (
+        await query_set.count(),
+        await query_set.offset(start).limit(size).all()
+    )
 
 
 async def find_notification_by_id(_id: str) -> Notification:
