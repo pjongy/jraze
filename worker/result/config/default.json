@@ -1,0 +1,11 @@
+{
+  "result_worker": {
+    "pool_size": "5",
+    "redis": {
+      "host": "localhost",
+      "notification_queue": {
+        "database": "0"
+      }
+    }
+  }
+}
