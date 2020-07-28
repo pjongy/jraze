@@ -11,6 +11,7 @@ async def init_db(host, port, user, password, db, generate=True):
                 'models': {
                     'models': [
                         'common.model.device',
+                        'common.model.notification',
                     ],
                     # If no default_connection specified, defaults to 'default'
                     'default_connection': 'default',
