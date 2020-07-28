@@ -1,6 +1,6 @@
 from tortoise.expressions import F
 
-from common.model.notification import Notification, NotificationStatus
+from common.model.notification import Notification
 
 
 async def increase_sent_count(
