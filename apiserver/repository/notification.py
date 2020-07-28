@@ -85,3 +85,13 @@ async def update_notification(
     target_notification.modified_at = utc_now()
     await target_notification.save()
     return target_notification
+
+
+async def change_notification_staus(
+    target_notification: Notification,
+    status: NotificationStatus
+) -> Notification:
+    target_notification.status = status
+    target_notification.modified_at = utc_now()
+    await target_notification.save()
+    return target_notification

@@ -1,11 +1,13 @@
 import datetime
+import json
 from typing import List, Optional
 
 import deserialize
 
 from apiserver.decorator.request import request_error_handler
 from apiserver.repository.notification import find_notifications_by_status, \
-    notification_model_to_dict, find_notification_by_id, create_notification
+    notification_model_to_dict, find_notification_by_id, create_notification, \
+    change_notification_staus
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
@@ -38,13 +40,17 @@ class CreateNotificationRequest:
 
 
 class NotificationsHttpResource:
+    NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
+
     def __init__(self, router, storage, secret, external):
         self.router = router
+        self.redis_pool = storage['redis']['notification_queue']
 
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
         self.router.add_route('POST', '', self.create_notification)
         self.router.add_route('GET', '/{notification_id}', self.get_notification)
+        self.router.add_route('POST', '/{notification_id}/:launch', self.launch_notification)
 
     @request_error_handler
     async def get_notifications(self, request):
@@ -87,13 +93,12 @@ class NotificationsHttpResource:
             await request.json(),
         )
 
-        conditions = {}
         try:
             conditions = object_to_dict(
                 deserialize.deserialize(ConditionClause, request.conditions)
             )
         except deserialize.exceptions.DeserializeException as error:
-            json_response(reason=f'wrong condition clause {error}', status=400)
+            return json_response(reason=f'wrong condition clause {error}', status=400)
 
         notification = await create_notification(
             title=request.title,
@@ -104,4 +109,37 @@ class NotificationsHttpResource:
             conditions=conditions,
             scheduled_at=request.scheduled_at,
         )
+        return json_response(result=notification_model_to_dict(notification))
+
+    @request_error_handler
+    async def launch_notification(self, request):
+        notification_id = request.match_info['notification_id']
+        notification = await find_notification_by_id(_id=notification_id)
+
+        if notification is None:
+            return json_response(reason=f'notification not found {notification_id}', status=404)
+
+        if notification.status != NotificationStatus.DRAFT:
+            return json_response(reason=f'can not be launched if status is not DRAFT', status=400)
+
+        notification = await change_notification_staus(
+            target_notification=notification,
+            status=NotificationStatus.LAUNCHED,
+        )
+
+        try:
+            with await self.redis_pool as redis_conn:
+                _ = await redis_conn.execute(
+                    'rpush',
+                    self.NOTIFICATION_JOB_QUEUE_TOPIC,
+                    json.dumps({
+                        'notification_id': notification.id,
+                    }),
+                )
+        except Exception:  # rollback if queue pushing failed
+            notification = await change_notification_staus(
+                target_notification=notification,
+                status=NotificationStatus.DRAFT,
+            )
+
         return json_response(result=notification_model_to_dict(notification))
