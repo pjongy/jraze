@@ -1,5 +1,6 @@
 import json
 import datetime
+import uuid
 
 import deserialize
 from aiohttp import web
@@ -16,6 +17,8 @@ class ManualJSONEncoder(json.JSONEncoder):
         if isinstance(o, datetime.datetime):
             r = datetime_to_kst_datetime(datetime_to_utc_datetime(o)).isoformat()
             return r
+        if isinstance(o, uuid.UUID):
+            return str(o)
         return super().default(o)
 
 

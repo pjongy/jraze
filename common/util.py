@@ -71,3 +71,20 @@ def kst_now():
 def random_string(length=8):
     letters = string.ascii_letters
     return ''.join(random.choice(letters) for i in range(length))
+
+
+def object_to_dict(obj):
+    if not hasattr(obj, '__dict__'):
+        return obj
+    result = {}
+    for key, val in obj.__dict__.items():
+        if key.startswith('_'):
+            continue
+        element = []
+        if isinstance(val, list):
+            for item in val:
+                element.append(object_to_dict(item))
+        else:
+            element = object_to_dict(val)
+        result[key] = element
+    return result

@@ -31,7 +31,7 @@ async def find_notifications_by_status(
     order_bys: List[str] = ()
 ) -> Tuple[int, List[Notification]]:
     notification_filter = Q()
-    if NotificationStatus is not None:
+    if status is not None:
         notification_filter = Q(status=status)
 
     query_set = Notification.filter(notification_filter)
@@ -70,7 +70,7 @@ async def create_notification(
         icon_url=icon_url,
         conditions=conditions,
         scheduled_at=scheduled_at,
-        status=NotificationStatus.CREATED,
+        status=NotificationStatus.DRAFT,
     )
 
 
