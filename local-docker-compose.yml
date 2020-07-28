@@ -56,12 +56,29 @@ services:
       dockerfile: worker/push/fcm/Dockerfile
     environment:
       ENV: dev
+      PUSH_WORKER__POOL_SIZE: 1
       PUSH_WORKER__REDIS__PASSWORD: redis_password
       PUSH_WORKER__REDIS__HOST: 172.12.1.3
       PUSH_WORKER__FIREBASE__SERVER_KEY: ${PUSH_WORKER__FIREBASE__SERVER_KEY}
     networks:
       local_net:
         ipv4_address: 172.12.1.5
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis-mq
+  result-worker:
+    build:
+      context: .
+      dockerfile: worker/result/Dockerfile
+    environment:
+      ENV: dev
+      RESULT_WORKER__POOL_SIZE: 1
+      RESULT_WORKER__REDIS__PASSWORD: redis_password
+      RESULT_WORKER__REDIS__HOST: 172.12.1.3
+    networks:
+      local_net:
+        ipv4_address: 172.12.1.6
     restart: unless-stopped
     depends_on:
       - mysql
