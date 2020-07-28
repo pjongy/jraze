@@ -13,17 +13,35 @@ $ docker-compose -f local-docker-compose.yml up -d
 
 ## Worker
 
-### Run worker
+### Push worker
+#### Run worker (FCM)
 ```
 $ export PUSH_WORKER__FIREBASE__SERVER_KEY={..fcm server key..}
+$ export PUSH_WORKER__REDIS__HOST={...}
 $ export PUSH_WORKER__REDIS__PASSWORD={...}
-$ python3 -m worker
+$ python3 -m worker.push.fcm
 ```
 
-### Run worker with docker-compose in local
+#### Run worker with docker-compose in local
 ```
 $ export PUSH_WORKER__FIREBASE__SERVER_KEY={..fcm server key..}
 $ docker-compose -f local-docker-compose.yml up -d push-worker
+```
+
+### Result worker
+#### Run worker
+```
+$ export RESULT_WORKER__REDIS__HOST={...}
+$ export RESULT_WORKER__REDIS__PASSWORD={...}
+$ export RESULT_WORKER__MYSQL__HOST={...}
+$ export RESULT_WORKER__MYSQL__USER={...}
+$ export RESULT_WORKER__MYSQL__PASSWORD={...}
+$ python3 -m worker.result
+```
+
+#### Run worker with docker-compose in local
+```
+$ docker-compose -f local-docker-compose.yml up -d result-worker
 ```
 
 ## API server
