@@ -86,3 +86,22 @@ services:
     depends_on:
       - mysql
       - redis-mq
+  notification-worker:
+    build:
+      context: .
+      dockerfile: worker/notification/Dockerfile
+    environment:
+      ENV: dev
+      NOTIFICATION_WORKER__POOL_SIZE: 1
+      NOTIFICATION_WORKER__MYSQL__HOST: 172.12.1.2
+      NOTIFICATION_WORKER__MYSQL__USER: root
+      NOTIFICATION_WORKER__MYSQL__PASSWORD: mysql_password
+      NOTIFICATION_WORKER__REDIS__PASSWORD: redis_password
+      NOTIFICATION_WORKER__REDIS__HOST: 172.12.1.3
+    networks:
+      local_net:
+        ipv4_address: 172.12.1.7
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis-mq

@@ -1,0 +1,5 @@
+{
+  "notification_worker": {
+    "pool_size": "1"
+  }
+}
