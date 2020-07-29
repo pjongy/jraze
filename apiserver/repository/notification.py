@@ -88,7 +88,7 @@ async def update_notification(
     return target_notification
 
 
-async def change_notification_staus(
+async def change_notification_status(
     target_notification: Notification,
     status: NotificationStatus
 ) -> Notification:

@@ -7,7 +7,7 @@ import deserialize
 from apiserver.decorator.request import request_error_handler
 from apiserver.repository.notification import find_notifications_by_status, \
     notification_model_to_dict, find_notification_by_id, create_notification, \
-    change_notification_staus
+    change_notification_status
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
@@ -131,7 +131,7 @@ class NotificationsHttpResource:
         if notification.status != NotificationStatus.DRAFT:
             return json_response(reason=f'can not be launched if status is not DRAFT', status=400)
 
-        notification = await change_notification_staus(
+        notification = await change_notification_status(
             target_notification=notification,
             status=NotificationStatus.LAUNCHED,
         )
@@ -148,7 +148,7 @@ class NotificationsHttpResource:
                 )
         except Exception as e:  # rollback if queue pushing failed
             logger.warning(f'rollback because of queue pushing failed {e}')
-            notification = await change_notification_staus(
+            notification = await change_notification_status(
                 target_notification=notification,
                 status=NotificationStatus.DRAFT,
             )
