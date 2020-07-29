@@ -44,9 +44,25 @@ $ python3 -m worker.result
 $ docker-compose -f local-docker-compose.yml up -d result-worker
 ```
 
+### Notification worker
+#### Run worker
+```
+$ export NOTIFICATION_WORKER__REDIS__HOST={...}
+$ export NOTIFICATION_WORKER__REDIS__PASSWORD={...}
+$ export NOTIFICATION_WORKER__MYSQL__HOST={...}
+$ export NOTIFICATION_WORKER__MYSQL__USER={...}
+$ export NOTIFICATION_WORKER__MYSQL__PASSWORD={...}
+$ python3 -m worker.notification
+```
+
+#### Run worker with docker-compose in local
+```
+$ docker-compose -f local-docker-compose.yml up -d notification-worker
+```
+
 ## API server
 
-### Run worker
+### Run server
 ```
 $ export API_SERVER__MYSQL__HOST = {...}
 $ export API_SERVER__MYSQL__USER = {...}
@@ -60,3 +76,8 @@ $ python3 -m apiserver
 ```
 $ docker-compose -f local-docker-compose.yml up -d api-server
 ```
+
+
+## Sequence
+
+[API server] -> [Notification worker] -> [Push worker] -> [Result worker]
