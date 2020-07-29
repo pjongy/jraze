@@ -6,10 +6,11 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
+from common.model.notification import NotificationStatus
 from common.storage.init import init_db
 from common.structure.job.result import ResultJob
 from worker.result.config import config
-from worker.result.repository.notification import increase_sent_count
+from worker.result.repository.notification import increase_sent_count, change_notification_status
 
 logger = get_logger(__name__)
 
@@ -40,6 +41,10 @@ class Replica:
                 sent=job.sent,
             )
             logger.info(f'increased sent: {job.sent} for {job.id} / affected_row: {affected_row}')
+            await change_notification_status(
+                _id=job.id,
+                status=NotificationStatus.SENT,
+            )
         except Exception:
             logger.exception(f'Fatal Error! {job_json}')
 
