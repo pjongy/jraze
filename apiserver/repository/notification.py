@@ -53,11 +53,11 @@ async def find_notification_by_id(_id: str) -> Notification:
 async def create_notification(
     title: str,
     body: str,
+    scheduled_at: datetime.datetime,
     deep_link: str = None,
     image_url: str = None,
     icon_url: str = None,
     conditions=None,
-    scheduled_at: datetime.datetime = None,
 ) -> Notification:
     if conditions is None:
         conditions = {}

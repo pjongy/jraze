@@ -12,7 +12,7 @@ from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
 from common.structure.condition import ConditionClause
-from common.util import string_to_utc_datetime, object_to_dict
+from common.util import string_to_utc_datetime, object_to_dict, utc_now
 
 logger = get_logger(__name__)
 
@@ -100,14 +100,23 @@ class NotificationsHttpResource:
         except deserialize.exceptions.DeserializeException as error:
             return json_response(reason=f'wrong condition clause {error}', status=400)
 
+        current_datetime = utc_now()
+        if current_datetime >= request.scheduled_at:
+            return json_response(reason=f'scheduled_at should later than current time', status=400)
+
+        if request.scheduled_at is None:
+            scheduled_at = current_datetime
+        else:
+            scheduled_at = request.scheduled_at
+
         notification = await create_notification(
             title=request.title,
             body=request.body,
+            scheduled_at=scheduled_at,
             deep_link=request.deep_link,
             image_url=request.image_url,
             icon_url=request.icon_url,
             conditions=conditions,
-            scheduled_at=request.scheduled_at,
         )
         return json_response(result=notification_model_to_dict(notification))
 
@@ -133,10 +142,12 @@ class NotificationsHttpResource:
                     'rpush',
                     self.NOTIFICATION_JOB_QUEUE_TOPIC,
                     json.dumps({
-                        'notification_id': notification.id,
+                        'notification_id': str(notification.id),
+                        'scheduled_at': notification.scheduled_at.isoformat()
                     }),
                 )
-        except Exception:  # rollback if queue pushing failed
+        except Exception as e:  # rollback if queue pushing failed
+            logger.warning(f'rollback because of queue pushing failed {e}')
             notification = await change_notification_staus(
                 target_notification=notification,
                 status=NotificationStatus.DRAFT,
