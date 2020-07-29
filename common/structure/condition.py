@@ -3,14 +3,11 @@ from typing import Optional, List
 import deserialize
 
 
-@deserialize.default('conditions', None)
-@deserialize.default('key', None)
-@deserialize.default('value', None)
 @deserialize.default('join_type', 'OR')
 class ConditionClause:
     conditions: Optional[List['ConditionClause']]
-    key: str
-    value: str
+    key: Optional[str]
+    value: Optional[str]
     join_type: str
 
 
