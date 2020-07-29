@@ -64,11 +64,11 @@ $ docker-compose -f local-docker-compose.yml up -d notification-worker
 
 ### Run server
 ```
-$ export API_SERVER__MYSQL__HOST = {...}
-$ export API_SERVER__MYSQL__USER = {...}
-$ export API_SERVER__MYSQL__PASSWORD = {...}
-$ export API_SERVER__REDIS__HOST = {...}
-$ export API_SERVER__REDIS__PASSWORD = {...}
+$ export API_SERVER__MYSQL__HOST={...}
+$ export API_SERVER__MYSQL__USER={...}
+$ export API_SERVER__MYSQL__PASSWORD={...}
+$ export API_SERVER__REDIS__HOST={...}
+$ export API_SERVER__REDIS__PASSWORD={...}
 $ python3 -m apiserver
 ```
 
@@ -81,3 +81,16 @@ $ docker-compose -f local-docker-compose.yml up -d api-server
 ## Sequence
 
 [API server] -> [Notification worker] -> [Push worker] -> [Result worker]
+
+
+## Misc
+Every product can controls each replica process worker amount but unfortunately, there are un-distributable products
+
+
+### Scale-out-able product
+- worker.result
+- worker.push.fcm
+
+### Scale-out-incapable product
+- worker.notification
+  - It should be distributes all devices for each push worker

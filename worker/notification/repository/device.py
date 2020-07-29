@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 from tortoise.query_utils import Q
 
@@ -24,16 +24,13 @@ async def find_devices_by_conditions(
     start: int = 0,
     size: int = 10,
     order_bys: List[str] = (),
-) -> Tuple[int, List[Device]]:
+) -> List[Device]:
     filter_ = _resolve_condition_clause_to_q(conditions)
     query_set = Device.filter(filter_)
     for order_by in order_bys:
         if order_by.isascii():
             query_set = query_set.order_by(order_by)
-    return (
-        await query_set.count(),
-        await query_set.offset(start).limit(size).all()
-    )
+    return await query_set.offset(start).limit(size).all()
 
 
 async def get_device_total_by_conditions(

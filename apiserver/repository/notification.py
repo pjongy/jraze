@@ -12,6 +12,7 @@ def notification_model_to_dict(row: Notification):
         'id': row.id,
         'title': row.title,
         'body': row.body,
+        'sent': row.sent,
         'deep_link': row.deep_link,
         'image_url': row.image_url,
         'icon_url': row.icon_url,
