@@ -1,14 +1,15 @@
-from typing import List
+from typing import List, Optional
 
 import deserialize
 
 
-@deserialize.default('image', '')
 @deserialize.default('extra', {})
 class FCMJob:
     id: str
     push_tokens: List[str]
     title: str
     body: str
-    image: str
+    image_url: Optional[str]
+    deep_link: Optional[str]
+    icon_url: Optional[str]
     extra: dict

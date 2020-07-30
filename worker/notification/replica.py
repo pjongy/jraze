@@ -66,6 +66,9 @@ class Replica:
         job.body = notification.body
         job.id = str(notification.uuid)
         job.title = notification.title
+        job.deep_link = notification.deep_link
+        job.image_url = notification.image_url
+        job.icon_url = notification.icon_url
         tasks = [
             add_device_notification_events(
                 devices=devices,
