@@ -7,9 +7,12 @@ from apiserver.decorator.request import request_error_handler
 from apiserver.repository.device import find_device_by_device_id, device_model_to_dict, \
     create_device, update_device, DevicePropertyBridge, add_device_properties, \
     device_property_model_to_dict, remove_device_properties
+from apiserver.repository.device_notification_event import find_notification_events_by_device_id, \
+    device_notification_event_model_to_dict
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.device import DevicePlatform, SendPlatform
+from common.model.device_notification_event import Event
 
 logger = get_logger(__name__)
 
@@ -38,6 +41,24 @@ class DeleteDevicePropertiesRequest:
     properties: List[DevicePropertyBridge]
 
 
+@deserialize.default('start', 0)
+@deserialize.default('size', 10)
+@deserialize.default('order_bys', [])
+@deserialize.default('events', [])
+@deserialize.parser('order_bys', lambda arg: arg.split(','))  # comma separated string to list
+@deserialize.parser('start', int)
+@deserialize.parser('size', int)
+@deserialize.parser(
+    'events',
+    lambda arg: [Event(int(elem)) for elem in arg.split(',')]
+)  # comma separated string to list
+class FetchDeviceNotificationEventsRequest:
+    events: List[Event]
+    start: int
+    size: int
+    order_bys: List[str]
+
+
 class DevicesHttpResource:
     def __init__(self, router, storage, secret, external):
         self.router = router
@@ -48,6 +69,11 @@ class DevicesHttpResource:
         self.router.add_route('PUT', '/{device_id}', self.update_device)
         self.router.add_route('PATCH', '/{device_id}/properties', self.update_properties)
         self.router.add_route('DELETE', '/{device_id}/properties', self.delete_properties)
+        self.router.add_route(
+            'GET',
+            '/{device_id}/notifications',
+            self.get_notification_events
+        )
 
     @request_error_handler
     async def get_device(self, request):
@@ -132,3 +158,36 @@ class DevicesHttpResource:
         )
 
         return json_response(result={'deleted': affected_rows})
+
+    @request_error_handler
+    async def get_notification_events(self, request):
+        device_id = request.match_info['device_id']
+        query_params: FetchDeviceNotificationEventsRequest = convert_request(
+            FetchDeviceNotificationEventsRequest,
+            dict(request.rel_url.query),
+        )
+        available_order_by_fields = {
+            'created_at', '-created_at',
+            'id', '-id',
+        }
+
+        device = await find_device_by_device_id(device_id=device_id)
+
+        if device is None:
+            return json_response(reason=f'invalid device_id {device_id}', status=404)
+
+        total, events = await find_notification_events_by_device_id(
+            device=device,
+            events=query_params.events,
+            start=query_params.start,
+            size=query_params.size,
+            order_bys=list(available_order_by_fields.intersection(query_params.order_bys)),
+        )
+
+        return json_response(result={
+            'total': total,
+            'events': [
+                device_notification_event_model_to_dict(event)
+                for event in events
+            ]
+        })
