@@ -37,12 +37,12 @@ class Replica:
                 ResultJob, json.loads(job_json)
             )
             affected_row = await increase_sent_count(
-                _id=job.id,
+                uuid=job.id,
                 sent=job.sent,
             )
             logger.info(f'increased sent: {job.sent} for {job.id} / affected_row: {affected_row}')
             await change_notification_status(
-                _id=job.id,
+                uuid=job.id,
                 status=NotificationStatus.SENT,
             )
         except Exception:

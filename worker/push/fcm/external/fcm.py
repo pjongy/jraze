@@ -1,6 +1,10 @@
 from typing import List, Tuple
 
+from common.logger.logger import get_logger
 from common.request import Request
+
+
+logger = get_logger(__name__)
 
 
 class FCM(Request):
@@ -32,6 +36,8 @@ class FCM(Request):
             headers={'Authorization': f'key={self.server_key}'}
         )
 
+        logger.debug(response)
+
         if not 200 <= status < 300:
             raise PermissionError(f'fcm notification sent failed {response}')
 
@@ -52,6 +58,7 @@ class FCM(Request):
             parameters=body,
             headers={'Authorization': f'key={self.server_key}'}
         )
+        logger.debug(response)
 
         if not 200 <= status < 300:
             raise PermissionError(f'fcm data sent failed {response}')

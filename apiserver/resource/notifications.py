@@ -49,8 +49,8 @@ class NotificationsHttpResource:
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
         self.router.add_route('POST', '', self.create_notification)
-        self.router.add_route('GET', '/{notification_id}', self.get_notification)
-        self.router.add_route('POST', '/{notification_id}/:launch', self.launch_notification)
+        self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
+        self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
 
     @request_error_handler
     async def get_notifications(self, request):
@@ -81,8 +81,11 @@ class NotificationsHttpResource:
 
     @request_error_handler
     async def get_notification(self, request):
-        notification_id = request.match_info['notification_id']
-        notification = await find_notification_by_id(_id=notification_id)
+        notification_uuid = request.match_info['notification_uuid']
+        notification = await find_notification_by_id(uuid=notification_uuid)
+
+        if notification is None:
+            return json_response(reason=f'notification not found {notification_uuid}', status=404)
 
         return json_response(result=notification_model_to_dict(notification))
 
@@ -122,11 +125,11 @@ class NotificationsHttpResource:
 
     @request_error_handler
     async def launch_notification(self, request):
-        notification_id = request.match_info['notification_id']
-        notification = await find_notification_by_id(_id=notification_id)
+        notification_uuid = request.match_info['notification_uuid']
+        notification = await find_notification_by_id(uuid=notification_uuid)
 
         if notification is None:
-            return json_response(reason=f'notification not found {notification_id}', status=404)
+            return json_response(reason=f'notification not found {notification_uuid}', status=404)
 
         if notification.status != NotificationStatus.DRAFT:
             return json_response(reason=f'can not be launched if status is not DRAFT', status=400)
@@ -142,7 +145,7 @@ class NotificationsHttpResource:
                     'rpush',
                     self.NOTIFICATION_JOB_QUEUE_TOPIC,
                     json.dumps({
-                        'notification_id': str(notification.id),
+                        'notification_uuid': str(notification.uuid),
                         'scheduled_at': notification.scheduled_at.isoformat()
                     }),
                 )

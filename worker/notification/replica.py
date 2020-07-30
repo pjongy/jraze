@@ -7,6 +7,7 @@ import deserialize
 
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
+from common.model.device_notification_event import Event
 from common.model.notification import Notification
 from common.storage.init import init_db
 from common.structure.condition import ConditionClause
@@ -16,6 +17,7 @@ from common.util import object_to_dict
 from worker.notification.config import config
 from worker.notification.repository.device import find_devices_by_conditions, \
     get_device_total_by_conditions
+from worker.notification.repository.device_notification_event import add_device_notification_events
 from worker.notification.repository.notification import find_notification_by_id
 
 logger = get_logger(__name__)
@@ -41,11 +43,9 @@ class Replica:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.job())
 
-    async def _find_devices_and_publish(
+    async def _send_notification_by_conditions(
         self,
-        job_id: str,
-        title: str,
-        body: str,
+        notification: Notification,
         conditions: ConditionClause,
         start: int,
         size: int
@@ -63,28 +63,16 @@ class Replica:
 
         job = FCMJob()
         job.push_tokens = fcm_tokens
-        job.body = body
-        job.id = job_id
-        job.title = title
-        await self._publish_job_to_fcm(fcm_job=job)
-
-    async def _send_with_notification(self, notification: Notification):
-        conditions = deserialize.deserialize(ConditionClause, notification.conditions)
-        device_total = await get_device_total_by_conditions(
-            conditions=conditions
-        )
-        iter_count = int(device_total / self.DEVICES_PER_ONCE_SIZE / self.TOTAL_WORKERS) + 1
-
+        job.body = notification.body
+        job.id = str(notification.uuid)
+        job.title = notification.title
         tasks = [
-            self._find_devices_and_publish(
-                job_id=str(notification.id),
-                title=notification.title,
-                body=notification.body,
-                conditions=conditions,
-                start=iteration * self.pid * self.DEVICES_PER_ONCE_SIZE,
-                size=self.DEVICES_PER_ONCE_SIZE,
-            )
-            for iteration in range(iter_count)
+            add_device_notification_events(
+                devices=devices,
+                notification=notification,
+                event=Event.SENT,
+            ),
+            self._publish_job_to_fcm(fcm_job=job)
         ]
         await asyncio.gather(*tasks)
 
@@ -104,13 +92,28 @@ class Replica:
                 NotificationJob, json.loads(job_json)
             )
 
-            if job.notification_id is not None:
+            if job.notification_uuid is not None:
                 notification = await find_notification_by_id(
-                    _id=job.notification_id,
+                    uuid=job.notification_uuid,
                 )
                 if notification is None:
                     logger.warning('invalid notification id')
-                await self._send_with_notification(notification)
+
+                conditions = deserialize.deserialize(ConditionClause, notification.conditions)
+                device_total = await get_device_total_by_conditions(
+                    conditions=conditions
+                )
+                iter_count = int(device_total / self.DEVICES_PER_ONCE_SIZE / self.TOTAL_WORKERS) + 1
+                tasks = [
+                    self._send_notification_by_conditions(
+                        notification=notification,
+                        conditions=conditions,
+                        start=iteration * self.pid * self.DEVICES_PER_ONCE_SIZE,
+                        size=self.DEVICES_PER_ONCE_SIZE,
+                    )
+                    for iteration in range(iter_count)
+                ]
+                await asyncio.gather(*tasks)
         except Exception:
             logger.exception(f'Fatal Error! {job_json}')
 

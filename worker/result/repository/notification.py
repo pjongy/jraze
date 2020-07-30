@@ -5,22 +5,22 @@ from common.util import utc_now
 
 
 async def increase_sent_count(
-    _id: str,
+    uuid: str,
     sent: int = None,
 ) -> int:
     return await Notification.filter(
-        id=_id
+        uuid=uuid
     ).update(
         sent=F('sent') + sent
     )
 
 
 async def change_notification_status(
-    _id: str,
+    uuid: str,
     status: NotificationStatus
 ) -> int:
     return await Notification.filter(
-        id=_id
+        uuid=uuid
     ).update(
         status=status,
         modified_at=utc_now(),

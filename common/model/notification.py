@@ -19,7 +19,8 @@ class Notification(Model, TimestampMixin):
     class Meta:
         table = 'notification'
 
-    id = fields.UUIDField(pk=True)
+    id = fields.IntField(pk=True)
+    uuid = fields.UUIDField(index=True)
     title = fields.CharField(max_length=255)
     body = fields.TextField()
     image_url = fields.TextField(null=True)
