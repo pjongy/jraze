@@ -78,10 +78,41 @@ $ docker-compose -f local-docker-compose.yml up -d api-server
 ```
 
 
-## Sequence
+## Project structure
+```
+/
+  /apiserver
+  /worker
+    /push
+      /fcm
+    /result
+    /notification
+```
 
+- API server
+  ---
+  - Endpoint for client can attach through REST API
+  - Take roles about register device/notification
+  - Also it shows device's event for notification
+  - Publish job for 'Notification worker'
+
+- Notification worker
+  ---
+  - Find devices comfort notification's condition and publish job for 'Push worker'
+
+- Push worker
+  ---
+  - Client for send push message to each send platform like: FCM, APNs(in planning)
+  - Publish job for 'Result worker' to update notification sent result (success / failed)
+
+- Result worker
+  ---
+  - Client for update notifications' sent result
+
+### Sequence
+```
 [API server] -> [Notification worker] -> [Push worker] -> [Result worker]
-
+```
 
 ## Misc
 Every product can controls each replica process worker amount but unfortunately, there are un-distributable products
@@ -93,4 +124,4 @@ Every product can controls each replica process worker amount but unfortunately,
 
 ### Scale-out-incapable product
 - worker.notification
-  - It should be distributes all devices for each push worker
+  - It'll distribute matched devices for each push worker
