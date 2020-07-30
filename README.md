@@ -1,4 +1,5 @@
-# Pusher
+# Jraze
+- ***Installable push sending service*** that can control push targets with their properties by notification's conditions
 
 ## Pre-requisites
 - docker >= 19.03.8
