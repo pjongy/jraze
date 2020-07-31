@@ -28,15 +28,12 @@ class Replica:
     DEVICES_PER_ONCE_SIZE = 100
     TOTAL_WORKERS = int(config.notification_worker.pool_size)
 
-    def __init__(self):
+    def __init__(self, pid):
         self.redis_host = config.notification_worker.redis.host
         self.redis_port = config.notification_worker.redis.port
         self.redis_password = config.notification_worker.redis.password
         self.redis_pool = None
-        self.pid = None
 
-    def run(self, pid):  # multiprocess child
-        self.pid = pid
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.job())

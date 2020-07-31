@@ -19,13 +19,12 @@ class Replica:
     PUSH_RESULT_QUEUE_TOPIC = 'PUSH_RESULT_QUEUE'
     REDIS_TIMEOUT = 0  # Infinite
 
-    def __init__(self):
+    def __init__(self, pid):
         self.redis_host = config.result_worker.redis.host
         self.redis_port = config.result_worker.redis.port
         self.redis_password = config.result_worker.redis.password
         self.redis_pool = None
 
-    def run(self, pid):  # multiprocess child
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.job())
