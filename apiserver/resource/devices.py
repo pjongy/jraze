@@ -33,7 +33,7 @@ class UpdateDeviceRequest:
     device_platform: DevicePlatform
 
 
-class UpdateDevicePropertiesRequest:
+class AddDevicePropertiesRequest:
     properties: List[DevicePropertyBridge]
 
 
@@ -67,13 +67,13 @@ class DevicesHttpResource:
         self.router.add_route('POST', '', self.create_device)
         self.router.add_route('GET', '/{device_id}', self.get_device)
         self.router.add_route('PUT', '/{device_id}', self.update_device)
-        self.router.add_route('PATCH', '/{device_id}/properties', self.update_properties)
         self.router.add_route('DELETE', '/{device_id}/properties', self.delete_properties)
         self.router.add_route(
             'GET',
             '/{device_id}/notifications',
             self.get_notification_events
         )
+        self.router.add_route('POST', '/{device_id}/properties/:add', self.add_properties)
 
     @request_error_handler
     async def get_device(self, request):
@@ -116,10 +116,10 @@ class DevicesHttpResource:
         return json_response(result=device_model_to_dict(row=device))
 
     @request_error_handler
-    async def update_properties(self, request):
+    async def add_properties(self, request):
         device_id = request.match_info['device_id']
-        request: UpdateDevicePropertiesRequest = convert_request(
-            UpdateDevicePropertiesRequest,
+        request: AddDevicePropertiesRequest = convert_request(
+            AddDevicePropertiesRequest,
             await request.json()
         )
         target_device = await find_device_by_device_id(device_id=device_id)

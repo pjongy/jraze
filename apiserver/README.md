@@ -70,7 +70,7 @@ class NotificationStatus(enum.IntEnum):
     - purpose: Update device information
     - `Same as /devices POST`
 
-  - /{device_id}/properties *PATCH*
+  - /{device_id}/properties/:add *POST*
     - purpose: Add device's properties that can be filtered by condition clause
     - request:
         ```
