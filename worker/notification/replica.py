@@ -99,13 +99,14 @@ class Replica:
             if job.notification is not None:
                 notification: Notification = job.notification
                 capacity = job.notification.devices.size
+                start = job.notification.devices.start
 
                 iter_count = math.ceil(capacity / self.DEVICES_PER_ONCE_SIZE)
                 tasks = [
                     self._send_notification_by_conditions(
                         notification=notification,
                         conditions=job.notification.conditions,
-                        start=iteration * self.DEVICES_PER_ONCE_SIZE,
+                        start=start + iteration * self.DEVICES_PER_ONCE_SIZE,
                         size=self.DEVICES_PER_ONCE_SIZE,
                     )
                     for iteration in range(iter_count)
