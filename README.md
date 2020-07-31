@@ -114,15 +114,3 @@ $ docker-compose -f local-docker-compose.yml up -d api-server
 ```
 [API server] -> [Notification worker] -> [Push worker] -> [Result worker]
 ```
-
-## Misc
-Every product can controls each replica process worker amount but unfortunately, there are un-distributable products
-
-
-### Scale-out-able product
-- worker.result
-- worker.push.fcm
-
-### Scale-out-incapable product
-- worker.notification
-  - It'll distribute matched devices for each push worker

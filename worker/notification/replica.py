@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import multiprocessing
 
 import aioredis
@@ -8,17 +9,14 @@ import deserialize
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
 from common.model.device_notification_event import Event
-from common.model.notification import Notification
 from common.storage.init import init_db
 from common.structure.condition import ConditionClause
 from common.structure.job.fcm import FCMJob
-from common.structure.job.notification import NotificationJob
+from common.structure.job.notification import NotificationJob, Notification
 from common.util import object_to_dict
 from worker.notification.config import config
-from worker.notification.repository.device import find_devices_by_conditions, \
-    get_device_total_by_conditions
+from worker.notification.repository.device import find_devices_by_conditions
 from worker.notification.repository.device_notification_event import add_device_notification_events
-from worker.notification.repository.notification import find_notification_by_id
 
 logger = get_logger(__name__)
 
@@ -61,18 +59,21 @@ class Replica:
             if device.send_platform == SendPlatform.FCM:
                 fcm_tokens.append(device.push_token)
 
-        job = FCMJob()
-        job.push_tokens = fcm_tokens
-        job.body = notification.body
-        job.id = str(notification.uuid)
-        job.title = notification.title
-        job.deep_link = notification.deep_link
-        job.image_url = notification.image_url
-        job.icon_url = notification.icon_url
+        job: FCMJob = deserialize.deserialize(
+            FCMJob, {
+                'push_tokens': fcm_tokens,
+                'id': str(notification.uuid),
+                'body': notification.body,
+                'title': notification.title,
+                'deep_link': notification.deep_link,
+                'image_url': notification.image_url,
+                'icon_url': notification.icon_url
+            }
+        )
         tasks = [
             add_device_notification_events(
                 devices=devices,
-                notification=notification,
+                notification_id=notification.id,
                 event=Event.SENT,
             ),
             self._publish_job_to_fcm(fcm_job=job)
@@ -95,30 +96,23 @@ class Replica:
                 NotificationJob, json.loads(job_json)
             )
 
-            if job.notification_uuid is not None:
-                notification = await find_notification_by_id(
-                    uuid=job.notification_uuid,
-                )
-                if notification is None:
-                    logger.warning('invalid notification id')
+            if job.notification is not None:
+                notification: Notification = job.notification
+                capacity = job.notification.devices.size
 
-                conditions = deserialize.deserialize(ConditionClause, notification.conditions)
-                device_total = await get_device_total_by_conditions(
-                    conditions=conditions
-                )
-                iter_count = int(device_total / self.DEVICES_PER_ONCE_SIZE / self.TOTAL_WORKERS) + 1
+                iter_count = math.ceil(capacity / self.DEVICES_PER_ONCE_SIZE)
                 tasks = [
                     self._send_notification_by_conditions(
                         notification=notification,
-                        conditions=conditions,
-                        start=iteration * self.pid * self.DEVICES_PER_ONCE_SIZE,
+                        conditions=job.notification.conditions,
+                        start=iteration * self.DEVICES_PER_ONCE_SIZE,
                         size=self.DEVICES_PER_ONCE_SIZE,
                     )
                     for iteration in range(iter_count)
                 ]
                 await asyncio.gather(*tasks)
-        except Exception:
-            logger.exception(f'Fatal Error! {job_json}')
+        except BaseException:
+            logger.exception(f'fatal error! {job_json}')
 
     async def job(self):  # real working job
         mysql_config = config.notification_worker.mysql

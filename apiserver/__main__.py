@@ -16,7 +16,7 @@ async def main():
     logger = get_logger(__name__)
     runner = web.AppRunner(await application())
     await runner.setup()
-    port = int(config.api_server.port)
+    port = config.api_server.port
     site = web.TCPSite(runner, port=port, backlog=1024)
     await site.start()
     logger.debug(f'Run server / {port}')

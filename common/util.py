@@ -73,7 +73,7 @@ def random_string(length=8):
     return ''.join(random.choice(letters) for i in range(length))
 
 
-def object_to_dict(obj):
+def object_to_dict(obj) -> dict:
     if not hasattr(obj, '__dict__'):
         return obj
     result = {}

@@ -1,10 +1,14 @@
+import asyncio
 import datetime
 import json
+import math
 from typing import List, Optional
 
 import deserialize
 
+from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
+from apiserver.repository.device import get_device_total_by_conditions
 from apiserver.repository.notification import find_notifications_by_status, \
     notification_model_to_dict, find_notification_by_id, create_notification, \
     change_notification_status
@@ -12,6 +16,7 @@ from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
 from common.structure.condition import ConditionClause
+from common.structure.job.notification import NotificationJob
 from common.util import string_to_utc_datetime, object_to_dict, utc_now
 
 logger = get_logger(__name__)
@@ -41,6 +46,7 @@ class CreateNotificationRequest:
 
 class NotificationsHttpResource:
     NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
+    NOTIFICATION_WORKER_COUNT = config.api_server.notification_worker.worker_count
 
     def __init__(self, router, storage, secret, external):
         self.router = router
@@ -131,29 +137,53 @@ class NotificationsHttpResource:
         if notification is None:
             return json_response(reason=f'notification not found {notification_uuid}', status=404)
 
-        if notification.status != NotificationStatus.DRAFT:
-            return json_response(reason=f'can not be launched if status is not DRAFT', status=400)
-
         notification = await change_notification_status(
             target_notification=notification,
             status=NotificationStatus.LAUNCHED,
         )
 
+        conditions = deserialize.deserialize(ConditionClause, notification.conditions)
+        device_total = await get_device_total_by_conditions(
+            conditions=conditions
+        )
+        notification_job_capacity = math.ceil(device_total / self.NOTIFICATION_WORKER_COUNT)
+
         try:
+            tasks = []
             with await self.redis_pool as redis_conn:
-                _ = await redis_conn.execute(
-                    'rpush',
-                    self.NOTIFICATION_JOB_QUEUE_TOPIC,
-                    json.dumps({
-                        'notification_uuid': str(notification.uuid),
-                        'scheduled_at': notification.scheduled_at.isoformat()
-                    }),
-                )
+                for job_index in range(self.NOTIFICATION_WORKER_COUNT):
+                    job: NotificationJob = deserialize.deserialize(
+                        NotificationJob, {
+                            'notification': {
+                                'id': notification.id,
+                                'uuid': str(notification.uuid),
+                                'title': notification.title,
+                                'body': notification.body,
+                                'image_url': notification.image_url,
+                                'icon_url': notification.icon_url,
+                                'deep_link': notification.deep_link,
+                                'conditions': object_to_dict(conditions),
+                                'devices': {
+                                    'start': job_index * notification_job_capacity,
+                                    'size': notification_job_capacity,
+                                }
+                            },
+                            'scheduled_at': notification.scheduled_at.isoformat()
+                        }
+                    )
+                    tasks.append(
+                        redis_conn.execute(
+                            'rpush',
+                            self.NOTIFICATION_JOB_QUEUE_TOPIC,
+                            json.dumps(object_to_dict(job)),
+                        )
+                    )
+                await asyncio.gather(*tasks)
         except Exception as e:  # rollback if queue pushing failed
             logger.warning(f'rollback because of queue pushing failed {e}')
             notification = await change_notification_status(
                 target_notification=notification,
-                status=NotificationStatus.DRAFT,
+                status=NotificationStatus.ERROR,
             )
 
         return json_response(result=notification_model_to_dict(notification))

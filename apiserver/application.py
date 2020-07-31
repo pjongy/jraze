@@ -36,7 +36,7 @@ async def application():
         password=redis_config.password,
         minsize=5,
         maxsize=10,
-        db=int(redis_config.notification_queue.database),
+        db=redis_config.notification_queue.database,
     )
 
     storage = {

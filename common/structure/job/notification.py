@@ -1,15 +1,32 @@
 from typing import List, Optional
 
-import deserialize
-
 from common.structure.condition import ConditionClause
 
 
-@deserialize.default('notification_uuid', None)
-@deserialize.default('device_ids', None)
-@deserialize.default('conditions', None)
-class NotificationJob:
-    notification_uuid: Optional[str]
+class Push:
+    title: str
+    body: str
+    image_url: Optional[str]
+    icon_url: Optional[str]
+    deep_link: Optional[str]
+
+
+class Notification(Push):
+    class Devices:
+        start: int
+        size: int
+    id: int
+    uuid: str
+    conditions: Optional[ConditionClause]
+    devices: Devices
+
+
+class Unrecorded(Push):
     device_ids: Optional[List[str]]
     conditions: Optional[List[ConditionClause]]
-    scheduled_at: str  # iso 8601 format
+
+
+class NotificationJob:
+    notification: Optional[Notification]
+    unrecorded: Optional[Unrecorded]
+    scheduled_at: str

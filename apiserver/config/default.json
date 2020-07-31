@@ -5,9 +5,12 @@
     },
     "redis": {
       "notification_queue": {
-        "database": "0"
+        "database": 0
       }
     },
-    "port": "8080"
+    "port": 8080,
+    "notification_worker": {
+      "worker_count": 5
+    }
   }
 }

@@ -41,7 +41,7 @@ class Replica:
                 targets=job.push_tokens,
                 title=job.title,
                 body=job.body,
-                image=job.image,
+                image=job.image_url,
             )
             logger.info(f'sent: {sent}, failed: {failed}')
 

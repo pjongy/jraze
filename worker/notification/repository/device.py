@@ -31,11 +31,3 @@ async def find_devices_by_conditions(
         if order_by.isascii():
             query_set = query_set.order_by(order_by)
     return await query_set.offset(start).limit(size).all()
-
-
-async def get_device_total_by_conditions(
-    conditions: ConditionClause,
-) -> int:
-    filter_ = _resolve_condition_clause_to_q(conditions)
-    query_set = Device.filter(filter_)
-    return await query_set.count()
