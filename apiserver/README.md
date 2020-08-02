@@ -39,18 +39,18 @@ class NotificationStatus(enum.IntEnum):
     - response:
         ```
         {
-          'success': ...,
-          'result': {
-            'id': ..sequential number..,
-            'device_id': ...device id...,
-            'push_token': ...,
-            'send_platform': ...,
-            'device_platform': ...,
-            'created_at': ...,
-            'modified_at': ...,
-            'device_properties': [ {...key...: ...value...}, ... ]
+          "success": ...,
+          "result": {
+            "id": ..sequential number..,
+            "device_id": ...device id...,
+            "push_token": ...,
+            "send_platform": ...,
+            "device_platform": ...,
+            "created_at": ...,
+            "modified_at": ...,
+            "device_properties": [ {...key...: ...value...}, ... ]
           },
-          'reason': ...,
+          "reason": ...,
         }
         ```
 
@@ -107,22 +107,22 @@ class NotificationStatus(enum.IntEnum):
     - response:
         ```
         {
-          'success': ...,
-          'result': {
-            'total': ...total event amount...,
-            'events': [
+          "success": ...,
+          "result": {
+            "total": ...total event amount...,
+            "events": [
               {
-                'id': ...sequential number...,
-                'notification': {
+                "id": ...sequential number...,
+                "notification": {
                   ... notification ...
                 },
-                'event': ...event type..,
-                'created_at': ...,
+                "event": ...event type..,
+                "created_at": ...,
               },
               ...
             ]
           },
-          'reason': ...,
+          "reason": ...,
         }
         ```
 
@@ -135,28 +135,28 @@ class NotificationStatus(enum.IntEnum):
     - response:
         ```
         {
-          'success': ...,
-          'result': {
-              'id': ...sequential number...,
-              'uuid': ...notification id...,
-              'title': ...,
-              'body': ...,
-              'sent': ...sent count (result)...,
-              'deep_link': ...landing link...,
-              'image_url': ...,
-              'icon_url': ...,
-              'conditions': {
-                 'conditions': [ ... conditions ... ],
-                 'key': ...compare key...,
-                 'value': ...compare value...,
-                 'join_type': ...[AND|OR]...
+          "success": ...,
+          "result": {
+              "id": ...sequential number...,
+              "uuid": ...notification id...,
+              "title": ...,
+              "body": ...,
+              "sent": ...sent count (result)...,
+              "deep_link": ...landing link...,
+              "image_url": ...,
+              "icon_url": ...,
+              "conditions": {
+                 "conditions": [ ... conditions ... ],
+                 "key": ...compare key...,
+                 "value": ...compare value...,
+                 "join_type": ...[AND|OR]...
               },
-              'status': ...,
-              'scheduled_at': ...push scheduled time...,
-              'created_at': ...,
-              'modified_at': ...,
+              "status": ...,
+              "scheduled_at": ...push scheduled time...,
+              "created_at": ...,
+              "modified_at": ...,
           },
-          'reason': ...,
+          "reason": ...,
         }
         ```
 
@@ -172,31 +172,31 @@ class NotificationStatus(enum.IntEnum):
     - response:
         ```
         {
-          'success': ...,
-          'result': [
+          "success": ...,
+          "result": [
             {
-              'id': ...sequential number...,
-              'uuid': ...notification id...,
-              'title': ...,
-              'body': ...,
-              'sent': ...sent count (result)...,
-              'deep_link': ...landing link...,
-              'image_url': ...,
-              'icon_url': ...,
-              'conditions': {
-                 'conditions': [ ... conditions ... ],
-                 'key': ...compare key...,
-                 'value': ...compare value...,
-                 'join_type': ...[AND|OR]...
+              "id": ...sequential number...,
+              "uuid": ...notification id...,
+              "title": ...,
+              "body": ...,
+              "sent": ...sent count (result)...,
+              "deep_link": ...landing link...,
+              "image_url": ...,
+              "icon_url": ...,
+              "conditions": {
+                 "conditions": [ ... conditions ... ],
+                 "key": ...compare key...,
+                 "value": ...compare value...,
+                 "join_type": ...[AND|OR]...
               },
-              'status': ...,
-              'scheduled_at': ...push scheduled time...,
-              'created_at': ...,
-              'modified_at': ...,
+              "status": ...,
+              "scheduled_at": ...push scheduled time...,
+              "created_at": ...,
+              "modified_at": ...,
             },
             ...
           ]
-          'reason': ...,
+          "reason": ...,
         }
         ```
 

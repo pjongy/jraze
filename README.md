@@ -17,6 +17,7 @@ $ docker-compose -f local-docker-compose.yml up -d
 ### Push worker
 #### Run worker (FCM)
 ```
+$ export ENV=dev
 $ export PUSH_WORKER__FIREBASE__SERVER_KEY={..fcm server key..}
 $ export PUSH_WORKER__REDIS__HOST={...}
 $ export PUSH_WORKER__REDIS__PASSWORD={...}
@@ -32,6 +33,7 @@ $ docker-compose -f local-docker-compose.yml up -d push-worker
 ### Result worker
 #### Run worker
 ```
+$ export ENV=dev
 $ export RESULT_WORKER__REDIS__HOST={...}
 $ export RESULT_WORKER__REDIS__PASSWORD={...}
 $ export RESULT_WORKER__MYSQL__HOST={...}
@@ -48,6 +50,7 @@ $ docker-compose -f local-docker-compose.yml up -d result-worker
 ### Notification worker
 #### Run worker
 ```
+$ export ENV=dev
 $ export NOTIFICATION_WORKER__REDIS__HOST={...}
 $ export NOTIFICATION_WORKER__REDIS__PASSWORD={...}
 $ export NOTIFICATION_WORKER__MYSQL__HOST={...}
@@ -65,6 +68,7 @@ $ docker-compose -f local-docker-compose.yml up -d notification-worker
 
 ### Run server
 ```
+$ export ENV=dev
 $ export API_SERVER__MYSQL__HOST={...}
 $ export API_SERVER__MYSQL__USER={...}
 $ export API_SERVER__MYSQL__PASSWORD={...}
