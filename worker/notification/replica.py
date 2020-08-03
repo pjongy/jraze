@@ -1,6 +1,5 @@
 import asyncio
 import json
-import math
 import multiprocessing
 import time
 
@@ -27,7 +26,7 @@ logger = get_logger(__name__)
 
 class Replica:
     REDIS_TIMEOUT = 0  # Infinite
-    DEVICES_PER_ONCE_SIZE = 100
+    DEVICES_PER_ONCE_SIZE = 300
     TOTAL_WORKERS = int(config.notification_worker.pool_size)
 
     def __init__(self, pid):
@@ -109,18 +108,33 @@ class Replica:
 
             if job.notification is not None:
                 notification: Notification = job.notification
-                capacity = job.notification.devices.size
-                start = job.notification.devices.start
+                worker_own_jobs = job.notification.devices.size
+                start_position = job.notification.devices.start
 
-                iter_count = math.ceil(capacity / self.DEVICES_PER_ONCE_SIZE)
+                fetching_size = min(worker_own_jobs, self.DEVICES_PER_ONCE_SIZE)
+                iter_count = int(worker_own_jobs / fetching_size)
+                # NOTE:
+                # If worker_own_jobs is smaller than DEVICE_PER_ONCE_SIZE,
+                # target devices overlap in each notification worker replica
+
+                fetching_ranges = [
+                    (start_position + iteration * fetching_size, fetching_size)
+                    for iteration in range(iter_count)
+                ]
+                if worker_own_jobs % fetching_size > 0:
+                    fetching_ranges.append((
+                        start_position + iter_count * fetching_size,
+                        worker_own_jobs % fetching_size
+                    ))
+                # NOTE: Split cases for covering 'worker_own_jobs % fetching_size != 0'
                 tasks = [
                     self._send_notification_by_conditions(
                         notification=notification,
                         conditions=job.notification.conditions,
-                        start=start + iteration * self.DEVICES_PER_ONCE_SIZE,
-                        size=self.DEVICES_PER_ONCE_SIZE,
+                        start=start,
+                        size=size,
                     )
-                    for iteration in range(iter_count)
+                    for start, size in fetching_ranges
                 ]
                 await asyncio.gather(*tasks)
         except BaseException:
