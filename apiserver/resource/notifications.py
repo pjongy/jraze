@@ -5,6 +5,7 @@ import math
 from typing import List, Optional
 
 import deserialize
+from aioredis import ConnectionsPool, RedisConnection
 
 from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
@@ -50,13 +51,20 @@ class NotificationsHttpResource:
 
     def __init__(self, router, storage, secret, external):
         self.router = router
-        self.redis_pool = storage['redis']['notification_queue']
+        self.redis_pool: ConnectionsPool = storage['redis']['notification_queue']
 
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
         self.router.add_route('POST', '', self.create_notification)
         self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
         self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
+
+    async def _publish_notification_job(self, redis_conn: RedisConnection, job: dict):
+        return redis_conn.execute(
+            'rpush',
+            self.NOTIFICATION_JOB_QUEUE_TOPIC,
+            json.dumps(job),
+        )
 
     @request_error_handler
     async def get_notifications(self, request):
@@ -172,10 +180,9 @@ class NotificationsHttpResource:
                         }
                     )
                     tasks.append(
-                        redis_conn.execute(
-                            'rpush',
-                            self.NOTIFICATION_JOB_QUEUE_TOPIC,
-                            json.dumps(object_to_dict(job)),
+                        self._publish_notification_job(
+                            redis_conn=redis_conn,
+                            job=object_to_dict(job),
                         )
                     )
                 await asyncio.gather(*tasks)

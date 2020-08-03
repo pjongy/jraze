@@ -5,6 +5,7 @@ import multiprocessing
 
 import aioredis
 import deserialize
+from aioredis import RedisConnection
 
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
@@ -112,6 +113,14 @@ class Replica:
         except BaseException:
             logger.exception(f'fatal error! {job_json}')
 
+    async def _blocking_get_notification_job(self, redis_conn: RedisConnection) -> str:
+        _, job_json, z = await redis_conn.execute(
+            'blpop',
+            self.NOTIFICATION_JOB_QUEUE_TOPIC,
+            self.REDIS_TIMEOUT,
+        )
+        return job_json
+
     async def job(self):  # real working job
         mysql_config = config.notification_worker.mysql
         await init_db(
@@ -130,11 +139,7 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                _, job_json = await redis_conn.execute(
-                    'blpop',
-                    self.NOTIFICATION_JOB_QUEUE_TOPIC,
-                    self.REDIS_TIMEOUT,
-                )
+                job_json = await self._blocking_get_notification_job(redis_conn=redis_conn)
                 logger.debug(multiprocessing.current_process())
 
                 if not job_json:
