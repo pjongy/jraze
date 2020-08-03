@@ -59,10 +59,17 @@ class NotificationsHttpResource:
         self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
         self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
 
-    async def _publish_notification_job(self, redis_conn: RedisConnection, job: dict):
+    async def _publish_notification_job(
+        self,
+        redis_conn: RedisConnection,
+        job: dict,
+        priority: int = 0,
+    ):
+        # NOTE: priority closed to 0 means more urgent
         return redis_conn.execute(
-            'rpush',
+            'zadd',
             self.NOTIFICATION_JOB_QUEUE_TOPIC,
+            priority,
             json.dumps(job),
         )
 
@@ -183,6 +190,7 @@ class NotificationsHttpResource:
                         self._publish_notification_job(
                             redis_conn=redis_conn,
                             job=object_to_dict(job),
+                            priority=0,
                         )
                     )
                 await asyncio.gather(*tasks)

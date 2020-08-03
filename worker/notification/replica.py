@@ -115,7 +115,7 @@ class Replica:
 
     async def _blocking_get_notification_job(self, redis_conn: RedisConnection) -> str:
         _, job_json, z = await redis_conn.execute(
-            'blpop',
+            'bzpopmin',
             self.NOTIFICATION_JOB_QUEUE_TOPIC,
             self.REDIS_TIMEOUT,
         )
