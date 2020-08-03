@@ -1,6 +1,14 @@
+import enum
+
 from aioredis import RedisConnection
 
 from common.queue import zadd, bzpopmin
+
+
+class NotificationPriority(enum.IntEnum):
+    IMMEDIATE = 0
+    SCHEDULED = 10
+
 
 NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
 
@@ -8,13 +16,13 @@ NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
 async def publish_notification_job(
     redis_conn: RedisConnection,
     job: dict,
-    priority: int = 0,
+    priority: NotificationPriority = NotificationPriority.IMMEDIATE,
 ):
     return await zadd(
         redis_conn=redis_conn,
         topic=NOTIFICATION_JOB_QUEUE_TOPIC,
         job=job,
-        z_index=priority
+        z_index=int(priority)
     )
 
 
