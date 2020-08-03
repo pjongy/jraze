@@ -1,11 +1,10 @@
 import asyncio
 import datetime
-import json
 import math
 from typing import List, Optional
 
 import deserialize
-from aioredis import ConnectionsPool, RedisConnection
+from aioredis import ConnectionsPool
 
 from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
@@ -16,6 +15,7 @@ from apiserver.repository.notification import find_notifications_by_status, \
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
+from common.queue.notification import publish_notification_job
 from common.structure.condition import ConditionClause
 from common.structure.job.notification import NotificationJob
 from common.util import string_to_utc_datetime, object_to_dict, utc_now
@@ -58,20 +58,6 @@ class NotificationsHttpResource:
         self.router.add_route('POST', '', self.create_notification)
         self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
         self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
-
-    async def _publish_notification_job(
-        self,
-        redis_conn: RedisConnection,
-        job: dict,
-        priority: int = 0,
-    ):
-        # NOTE: priority closed to 0 means more urgent
-        return redis_conn.execute(
-            'zadd',
-            self.NOTIFICATION_JOB_QUEUE_TOPIC,
-            priority,
-            json.dumps(job),
-        )
 
     @request_error_handler
     async def get_notifications(self, request):
@@ -187,7 +173,7 @@ class NotificationsHttpResource:
                         }
                     )
                     tasks.append(
-                        self._publish_notification_job(
+                        publish_notification_job(
                             redis_conn=redis_conn,
                             job=object_to_dict(job),
                             priority=0,

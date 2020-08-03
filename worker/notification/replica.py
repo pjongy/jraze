@@ -5,11 +5,12 @@ import multiprocessing
 
 import aioredis
 import deserialize
-from aioredis import RedisConnection
 
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
 from common.model.device_notification_event import Event
+from common.queue.notification import blocking_get_notification_job
+from common.queue.push.fcm import publish_fcm_job
 from common.storage.init import init_db
 from common.structure.condition import ConditionClause
 from common.structure.job.fcm import FCMJob
@@ -23,8 +24,6 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
-    FCM_PUSH_QUEUE_TOPIC = 'FCM_PUSH_QUEUE'
     REDIS_TIMEOUT = 0  # Infinite
     DEVICES_PER_ONCE_SIZE = 100
     TOTAL_WORKERS = int(config.notification_worker.pool_size)
@@ -80,10 +79,9 @@ class Replica:
 
     async def _publish_job_to_fcm(self, fcm_job: FCMJob):
         with await self.redis_pool as redis_conn:
-            pushed_job_count = await redis_conn.execute(
-                'rpush',
-                self.FCM_PUSH_QUEUE_TOPIC,
-                json.dumps(object_to_dict(fcm_job)),
+            pushed_job_count = await publish_fcm_job(
+                redis_conn=redis_conn,
+                job=object_to_dict(fcm_job)
             )
             return pushed_job_count
 
@@ -113,14 +111,6 @@ class Replica:
         except BaseException:
             logger.exception(f'fatal error! {job_json}')
 
-    async def _blocking_get_notification_job(self, redis_conn: RedisConnection) -> str:
-        _, job_json, z = await redis_conn.execute(
-            'bzpopmin',
-            self.NOTIFICATION_JOB_QUEUE_TOPIC,
-            self.REDIS_TIMEOUT,
-        )
-        return job_json
-
     async def job(self):  # real working job
         mysql_config = config.notification_worker.mysql
         await init_db(
@@ -139,7 +129,10 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                job_json = await self._blocking_get_notification_job(redis_conn=redis_conn)
+                job_json = await blocking_get_notification_job(
+                    redis_conn=redis_conn,
+                    timeout=self.REDIS_TIMEOUT
+                )
                 logger.debug(multiprocessing.current_process())
 
                 if not job_json:

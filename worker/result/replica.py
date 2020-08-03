@@ -7,6 +7,7 @@ import deserialize
 
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
+from common.queue.result.push import blocking_get_push_result_job
 from common.storage.init import init_db
 from common.structure.job.result import ResultJob
 from worker.result.config import config
@@ -16,7 +17,6 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    PUSH_RESULT_QUEUE_TOPIC = 'PUSH_RESULT_QUEUE'
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
@@ -65,10 +65,9 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                _, job_json = await redis_conn.execute(
-                    'blpop',
-                    self.PUSH_RESULT_QUEUE_TOPIC,
-                    self.REDIS_TIMEOUT,
+                job_json = await blocking_get_push_result_job(
+                    redis_conn=redis_conn,
+                    timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 
