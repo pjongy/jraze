@@ -1,10 +1,10 @@
 import asyncio
 import datetime
-import json
 import math
 from typing import List, Optional
 
 import deserialize
+from aioredis import ConnectionsPool
 
 from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
@@ -15,9 +15,10 @@ from apiserver.repository.notification import find_notifications_by_status, \
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
+from common.queue.notification import publish_notification_job, NotificationPriority
 from common.structure.condition import ConditionClause
 from common.structure.job.notification import NotificationJob
-from common.util import string_to_utc_datetime, object_to_dict, utc_now
+from common.util import string_to_utc_datetime, object_to_dict, utc_now, datetime_to_utc_datetime
 
 logger = get_logger(__name__)
 
@@ -50,7 +51,7 @@ class NotificationsHttpResource:
 
     def __init__(self, router, storage, secret, external):
         self.router = router
-        self.redis_pool = storage['redis']['notification_queue']
+        self.redis_pool: ConnectionsPool = storage['redis']['notification_queue']
 
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
@@ -110,13 +111,14 @@ class NotificationsHttpResource:
             return json_response(reason=f'wrong condition clause {error}', status=400)
 
         current_datetime = utc_now()
-        if current_datetime >= request.scheduled_at:
-            return json_response(reason=f'scheduled_at should later than current time', status=400)
 
         if request.scheduled_at is None:
             scheduled_at = current_datetime
         else:
             scheduled_at = request.scheduled_at
+
+        if current_datetime > scheduled_at:
+            return json_response(reason=f'scheduled_at should later than current time', status=400)
 
         notification = await create_notification(
             title=request.title,
@@ -151,6 +153,13 @@ class NotificationsHttpResource:
         try:
             tasks = []
             with await self.redis_pool as redis_conn:
+                current_datetime = utc_now()
+                scheduled_at_utc = datetime_to_utc_datetime(notification.scheduled_at)
+
+                priority = NotificationPriority.IMMEDIATE
+                if scheduled_at_utc > current_datetime:
+                    priority = NotificationPriority.SCHEDULED
+
                 for job_index in range(self.NOTIFICATION_WORKER_COUNT):
                     job: NotificationJob = deserialize.deserialize(
                         NotificationJob, {
@@ -168,14 +177,14 @@ class NotificationsHttpResource:
                                     'size': notification_job_capacity,
                                 }
                             },
-                            'scheduled_at': notification.scheduled_at.isoformat()
+                            'scheduled_at': scheduled_at_utc.isoformat()
                         }
                     )
                     tasks.append(
-                        redis_conn.execute(
-                            'rpush',
-                            self.NOTIFICATION_JOB_QUEUE_TOPIC,
-                            json.dumps(object_to_dict(job)),
+                        publish_notification_job(
+                            redis_conn=redis_conn,
+                            job=object_to_dict(job),
+                            priority=priority,
                         )
                     )
                 await asyncio.gather(*tasks)

@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import multiprocessing
+import time
 
 import aioredis
 import deserialize
@@ -9,11 +10,14 @@ import deserialize
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
 from common.model.device_notification_event import Event
+from common.queue.notification import blocking_get_notification_job, publish_notification_job, \
+    NotificationPriority
+from common.queue.push.fcm import publish_fcm_job
 from common.storage.init import init_db
 from common.structure.condition import ConditionClause
 from common.structure.job.fcm import FCMJob
 from common.structure.job.notification import NotificationJob, Notification
-from common.util import object_to_dict
+from common.util import object_to_dict, string_to_utc_datetime, utc_now
 from worker.notification.config import config
 from worker.notification.repository.device import find_devices_by_conditions
 from worker.notification.repository.device_notification_event import add_device_notification_events
@@ -22,8 +26,6 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
-    FCM_PUSH_QUEUE_TOPIC = 'FCM_PUSH_QUEUE'
     REDIS_TIMEOUT = 0  # Infinite
     DEVICES_PER_ONCE_SIZE = 100
     TOTAL_WORKERS = int(config.notification_worker.pool_size)
@@ -79,10 +81,9 @@ class Replica:
 
     async def _publish_job_to_fcm(self, fcm_job: FCMJob):
         with await self.redis_pool as redis_conn:
-            pushed_job_count = await redis_conn.execute(
-                'rpush',
-                self.FCM_PUSH_QUEUE_TOPIC,
-                json.dumps(object_to_dict(fcm_job)),
+            pushed_job_count = await publish_fcm_job(
+                redis_conn=redis_conn,
+                job=object_to_dict(fcm_job)
             )
             return pushed_job_count
 
@@ -92,6 +93,19 @@ class Replica:
             job: NotificationJob = deserialize.deserialize(
                 NotificationJob, json.loads(job_json)
             )
+
+            scheduled_at = string_to_utc_datetime(job.scheduled_at)
+            current_datetime = utc_now()
+            if scheduled_at > current_datetime:
+                with await self.redis_pool as redis_conn:
+                    await publish_notification_job(
+                        redis_conn=redis_conn,
+                        job=object_to_dict(job),
+                        priority=NotificationPriority.SCHEDULED,
+                    )
+                logger.debug('scheduled notification (passed)')
+                time.sleep(1)
+                return
 
             if job.notification is not None:
                 notification: Notification = job.notification
@@ -130,10 +144,9 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                _, job_json = await redis_conn.execute(
-                    'blpop',
-                    self.NOTIFICATION_JOB_QUEUE_TOPIC,
-                    self.REDIS_TIMEOUT,
+                job_json = await blocking_get_notification_job(
+                    redis_conn=redis_conn,
+                    timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 

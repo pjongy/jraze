@@ -6,6 +6,8 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
+from common.queue.push.fcm import blocking_get_fcm_job
+from common.queue.result.push import publish_push_result_job
 from common.structure.job.fcm import FCMJob
 from worker.push.fcm.config import config
 from worker.push.fcm.external.fcm import FCM
@@ -14,8 +16,6 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    FCM_PUSH_QUEUE_TOPIC = 'FCM_PUSH_QUEUE'
-    PUSH_RESULT_QUEUE_TOPIC = 'PUSH_RESULT_QUEUE'
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
@@ -46,14 +46,13 @@ class Replica:
 
             if job.id:
                 with await self.redis_pool as redis_conn:
-                    _ = await redis_conn.execute(
-                        'rpush',
-                        self.PUSH_RESULT_QUEUE_TOPIC,
-                        json.dumps({
+                    await publish_push_result_job(
+                        redis_conn=redis_conn,
+                        job={
                             'id': job.id,
                             'sent': sent,
                             'failed': failed,
-                        }),
+                        }
                     )
         except Exception:
             logger.exception(f'Fatal Error! {job_json}')
@@ -68,10 +67,9 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                _, job_json = await redis_conn.execute(
-                    'blpop',
-                    self.FCM_PUSH_QUEUE_TOPIC,
-                    self.REDIS_TIMEOUT,
+                job_json = await blocking_get_fcm_job(
+                    redis_conn=redis_conn,
+                    timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 
