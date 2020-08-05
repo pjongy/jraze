@@ -86,26 +86,8 @@ class Replica:
             )
             return pushed_job_count
 
-    async def process_job(self, job_json):  # real worker if job published
+    async def process_job(self, job: NotificationJob):  # real worker if job published
         try:
-            logger.debug(job_json)
-            job: NotificationJob = deserialize.deserialize(
-                NotificationJob, json.loads(job_json)
-            )
-
-            scheduled_at = string_to_utc_datetime(job.scheduled_at)
-            current_datetime = utc_now()
-            if scheduled_at > current_datetime:
-                with await self.redis_pool as redis_conn:
-                    await publish_notification_job(
-                        redis_conn=redis_conn,
-                        job=object_to_dict(job),
-                        priority=NotificationPriority.SCHEDULED,
-                    )
-                logger.debug('scheduled notification (passed)')
-                time.sleep(1)
-                return
-
             if job.notification is not None:
                 notification: Notification = job.notification
                 worker_own_jobs = job.notification.devices.size
@@ -137,8 +119,8 @@ class Replica:
                     for start, size in fetching_ranges
                 ]
                 await asyncio.gather(*tasks)
-        except BaseException:
-            logger.exception(f'fatal error! {job_json}')
+        except BaseException as e:
+            logger.exception(f'fatal error! {e}')
 
     async def job(self):  # real working job
         mysql_config = config.notification_worker.mysql
@@ -167,5 +149,22 @@ class Replica:
                 if not job_json:
                     continue
 
+                logger.debug(job_json)
+                job: NotificationJob = deserialize.deserialize(
+                    NotificationJob, json.loads(job_json)
+                )
+
+                scheduled_at = string_to_utc_datetime(job.scheduled_at)
+                current_datetime = utc_now()
+                if scheduled_at > current_datetime:
+                    await publish_notification_job(
+                        redis_conn=redis_conn,
+                        job=object_to_dict(job),
+                        priority=NotificationPriority.SCHEDULED,
+                    )
+                    logger.debug('scheduled notification (passed)')
+                    await asyncio.sleep(1)
+                    continue
+
                 logger.info('new task')
-                asyncio.create_task(self.process_job(job_json))
+                asyncio.create_task(self.process_job(job=job))
