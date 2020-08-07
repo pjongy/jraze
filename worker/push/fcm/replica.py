@@ -11,6 +11,7 @@ from common.queue.result.push import publish_push_result_job
 from common.structure.job.fcm import FCMJob
 from worker.push.fcm.config import config
 from worker.push.fcm.external.fcm.legacy import FCMClientLegacy
+from worker.push.fcm.external.fcm.v1 import FCMClientV1
 
 logger = get_logger(__name__)
 
@@ -19,7 +20,9 @@ class Replica:
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
-        self.fcm = FCMClientLegacy(config.push_worker.firebase.server_key)
+        fcm_config = config.push_worker.fcm
+        self.fcm = FCMClientLegacy(fcm_config.legacy.server_key)
+        self.fcm_v1 = FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
@@ -35,12 +38,15 @@ class Replica:
             job: FCMJob = deserialize.deserialize(
                 FCMJob, json.loads(job_json)
             )
-
-            sent, failed = await self.fcm.send_notification(
+            sent, failed = await self.fcm_v1.send_data(
                 targets=job.push_tokens,
-                title=job.title,
-                body=job.body,
-                image=job.image_url,
+                data={
+                    'notification': {
+                        'title': job.title,
+                        'body': job.body,
+                        'image': job.image_url,
+                    }
+                }
             )
             logger.info(f'sent: {sent}, failed: {failed}')
 

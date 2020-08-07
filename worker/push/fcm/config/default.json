@@ -1,13 +1,19 @@
 {
   "push_worker": {
-    "firebase": {
-      "server_key": ""
+    "fcm": {
+      "legacy": {
+        "server_key": ""
+      },
+      "v1": {
+        "project_id": "",
+        "key_file_name": ""
+      }
     },
-    "pool_size": "5",
+    "pool_size": 5,
     "redis": {
       "host": "localhost",
       "notification_queue": {
-        "database": "0"
+        "database": 0
       }
     }
   }

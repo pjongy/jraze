@@ -6,23 +6,35 @@ from common.configutil import get_config
 
 
 class Config:
+    @deserialize.parser('pool_size', int)
     class FCMPushWorker:
-        class Firebase:
-            server_key: str
+        class FCM:
+            class V1:
+                project_id: str
+                key_file_name: str
 
-        @deserialize.default('port', '6379')
+            class Legacy:
+                server_key: str
+
+            v1: V1
+            legacy: Legacy
+
+        @deserialize.default('port', 6379)
+        @deserialize.parser('port', int)
         class Redis:
+
+            @deserialize.parser('database', int)
             class Database:
-                database: str
+                database: int
 
             host: str
-            port: str
+            port: int
             password: str
 
             notification_queue: Database
 
-        firebase: Firebase
-        pool_size: str
+        fcm: FCM
+        pool_size: int
         redis: Redis
 
     push_worker: FCMPushWorker
