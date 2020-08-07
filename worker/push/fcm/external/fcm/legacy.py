@@ -7,7 +7,7 @@ from common.request import Request
 logger = get_logger(__name__)
 
 
-class FCM(Request):
+class FCMClientLegacy(Request):
     FCM_API_HOST = 'https://fcm.googleapis.com'
 
     def __init__(self, server_key):

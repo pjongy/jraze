@@ -10,7 +10,7 @@ from common.queue.push.fcm import blocking_get_fcm_job
 from common.queue.result.push import publish_push_result_job
 from common.structure.job.fcm import FCMJob
 from worker.push.fcm.config import config
-from worker.push.fcm.external.fcm import FCM
+from worker.push.fcm.external.fcm.legacy import FCMClientLegacy
 
 logger = get_logger(__name__)
 
@@ -19,7 +19,7 @@ class Replica:
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
-        self.fcm = FCM(config.push_worker.firebase.server_key)
+        self.fcm = FCMClientLegacy(config.push_worker.firebase.server_key)
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
