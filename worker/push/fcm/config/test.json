@@ -1,7 +1,12 @@
 {
   "push_worker": {
-    "firebase": {
-      "server_key": "test"
+    "fcm": {
+      "legacy": {
+        "server_key": "test"
+      },
+      "v1": {
+        "project_id": "test"
+      }
     },
     "redis": {
       "host": "localhost"
