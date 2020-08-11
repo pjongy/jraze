@@ -7,11 +7,12 @@ from google.oauth2.service_account import Credentials
 
 from common.logger.logger import get_logger
 from common.request import Request
+from worker.push.fcm.external.fcm.abstract import AbstractFCM
 
 logger = get_logger(__name__)
 
 
-class FCMClientV1(Request):
+class FCMClientV1(Request, AbstractFCM):
     FCM_BASE_URL = 'https://fcm.googleapis.com/v1/projects/'
     SCOPES = ['https://www.googleapis.com/auth/firebase.messaging']
 

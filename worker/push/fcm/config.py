@@ -18,6 +18,7 @@ class Config:
 
             v1: V1
             legacy: Legacy
+            client: str
 
         @deserialize.default('port', 6379)
         @deserialize.parser('port', int)

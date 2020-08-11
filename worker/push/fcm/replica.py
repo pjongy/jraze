@@ -10,6 +10,7 @@ from common.queue.push.fcm import blocking_get_fcm_job
 from common.queue.result.push import publish_push_result_job
 from common.structure.job.fcm import FCMJob
 from worker.push.fcm.config import config
+from worker.push.fcm.external.fcm.abstract import AbstractFCM
 from worker.push.fcm.external.fcm.legacy import FCMClientLegacy
 from worker.push.fcm.external.fcm.v1 import FCMClientV1
 
@@ -21,8 +22,10 @@ class Replica:
 
     def __init__(self, pid):
         fcm_config = config.push_worker.fcm
-        self.fcm = FCMClientLegacy(fcm_config.legacy.server_key)
-        self.fcm_v1 = FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
+        self.fcm: AbstractFCM = {
+            'legacy': FCMClientLegacy(fcm_config.legacy.server_key),
+            'v1': FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
+        }[config.push_worker.fcm.client]
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
@@ -38,7 +41,10 @@ class Replica:
             job: FCMJob = deserialize.deserialize(
                 FCMJob, json.loads(job_json)
             )
-            sent, failed = await self.fcm_v1.send_data(
+            if not job.push_tokens:
+                return
+
+            sent, failed = await self.fcm.send_data(
                 targets=job.push_tokens,
                 data={
                     'notification': {
