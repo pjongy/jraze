@@ -8,17 +8,31 @@
 
 ## Quick start (on local)
 ```
-$ export PUSH_WORKER__FIREBASE__SERVER_KEY={..fcm server key..}
+------- Select FCM API version
+| $ export PUSH_WORKER__FCM__LEGACY__SERVER_KEY={..fcm server key..}
+| $ export PUSH_WORKER__FCM__CLIENT=legacy
+-------
+| $ export PUSH_WORKER__FCM__V1__KEY_FILE_NAME={..fcm service account key path..}
+| $ export PUSH_WORKER__FCM__V1__PROJECT_ID={..fcm project id..}
+| $ export PUSH_WORKER__FCM__CLIENT=v1
+-------
 $ docker-compose -f local-docker-compose.yml up -d
 ```
 
 ## Worker
 
 ### Push worker
-#### Run worker (FCM)
+#### Run worker
 ```
 $ export ENV=dev
-$ export PUSH_WORKER__FIREBASE__SERVER_KEY={..fcm server key..}
+------- Select FCM API version
+| $ export PUSH_WORKER__FCM__LEGACY__SERVER_KEY={..fcm server key..}
+| $ export PUSH_WORKER__FCM__CLIENT=legacy
+-------
+| $ export PUSH_WORKER__FCM__V1__KEY_FILE_NAME={..fcm service account key path..}
+| $ export PUSH_WORKER__FCM__V1__PROJECT_ID={..fcm project id..}
+| $ export PUSH_WORKER__FCM__CLIENT=v1
+-------
 $ export PUSH_WORKER__REDIS__HOST={...}
 $ export PUSH_WORKER__REDIS__PASSWORD={...}
 $ python3 -m worker.push.fcm

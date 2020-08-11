@@ -54,12 +54,17 @@ services:
     build:
       context: .
       dockerfile: worker/push/fcm/Dockerfile
+    volumes:
+      - ${PUSH_WORKER__FCM__V1__KEY_FILE_NAME:-./push/fcm}:/fcm_service_account.json
     environment:
       ENV: dev
       PUSH_WORKER__POOL_SIZE: 1
       PUSH_WORKER__REDIS__PASSWORD: redis_password
       PUSH_WORKER__REDIS__HOST: 172.12.1.3
-      PUSH_WORKER__FIREBASE__SERVER_KEY: ${PUSH_WORKER__FIREBASE__SERVER_KEY}
+      PUSH_WORKER__FCM__LEGACY__SERVER_KEY: ${PUSH_WORKER__FCM__LEGACY__SERVER_KEY:-empty}
+      PUSH_WORKER__FCM__V1__KEY_FILE_NAME: /fcm_service_account.json
+      PUSH_WORKER__FCM__V1__PROJECT_ID: ${PUSH_WORKER__FCM__V1__PROJECT_ID:-empty}
+      PUSH_WORKER__FCM__CLIENT: ${PUSH_WORKER__FCM__CLIENT}
     networks:
       local_net:
         ipv4_address: 172.12.1.5
