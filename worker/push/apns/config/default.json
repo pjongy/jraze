@@ -1,0 +1,14 @@
+{
+  "push_worker": {
+    "apns": {
+      "key_file_name": ""
+    },
+    "pool_size": 5,
+    "redis": {
+      "host": "localhost",
+      "notification_queue": {
+        "database": 0
+      }
+    }
+  }
+}
