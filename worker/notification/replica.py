@@ -11,9 +11,11 @@ from common.model.device import SendPlatform
 from common.model.device_notification_event import Event
 from common.queue.notification import blocking_get_notification_job, publish_notification_job, \
     NotificationPriority
+from common.queue.push.apns import publish_apns_job
 from common.queue.push.fcm import publish_fcm_job
 from common.storage.init import init_db
 from common.structure.condition import ConditionClause
+from common.structure.job.apns import APNsJob
 from common.structure.job.fcm import FCMJob
 from common.structure.job.notification import NotificationJob, Notification
 from common.util import object_to_dict, string_to_utc_datetime, utc_now
@@ -52,14 +54,28 @@ class Replica:
             size=size,
         )
         fcm_tokens = []
+        apns_tokens = []
 
         for device in devices:
             if device.send_platform == SendPlatform.FCM:
                 fcm_tokens.append(device.push_token)
+            if device.send_platform == SendPlatform.APNS:
+                apns_tokens.append(device.push_token)
 
-        job: FCMJob = deserialize.deserialize(
+        fcm_job: FCMJob = deserialize.deserialize(
             FCMJob, {
                 'push_tokens': fcm_tokens,
+                'id': str(notification.uuid),
+                'body': notification.body,
+                'title': notification.title,
+                'deep_link': notification.deep_link,
+                'image_url': notification.image_url,
+                'icon_url': notification.icon_url
+            }
+        )
+        apns_job: APNsJob = deserialize.deserialize(
+            APNsJob, {
+                'device_tokens': apns_tokens,
                 'id': str(notification.uuid),
                 'body': notification.body,
                 'title': notification.title,
@@ -74,7 +90,8 @@ class Replica:
                 notification_id=notification.id,
                 event=Event.SENT,
             ),
-            self._publish_job_to_fcm(fcm_job=job)
+            self._publish_job_to_fcm(fcm_job=fcm_job),
+            self._publish_job_to_apns(apns_job=apns_job)
         ]
         await asyncio.gather(*tasks)
 
@@ -83,6 +100,14 @@ class Replica:
             pushed_job_count = await publish_fcm_job(
                 redis_conn=redis_conn,
                 job=object_to_dict(fcm_job)
+            )
+            return pushed_job_count
+
+    async def _publish_job_to_apns(self, apns_job: APNsJob):
+        with await self.redis_pool as redis_conn:
+            pushed_job_count = await publish_apns_job(
+                redis_conn=redis_conn,
+                job=object_to_dict(apns_job)
             )
             return pushed_job_count
 

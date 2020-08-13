@@ -15,12 +15,11 @@ class APNsV3:
     APNS_BASE_URL = 'https://api.push.apple.com'
 
     def __init__(self, apple_jwt: AppleJWT):
-        self.apple_jwt = apple_jwt
+        self.apple_jwt: AppleJWT = apple_jwt
         self.access_token = None
 
     def generate_access_token(self) -> str:
-        # Check access token expiry and re-generate if necessary
-        pass
+        return self.apple_jwt.generate()
 
     async def send_data(
         self,
