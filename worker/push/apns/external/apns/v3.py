@@ -48,7 +48,7 @@ class APNsV3:
             response = result.json()
             logger.debug(response)
             if not 200 <= result.status_code < 300:
-                logger.error(f'fcm data sent failed {response}')
+                logger.error(f'apns data sent failed {response}')
                 continue
 
             success += 1
