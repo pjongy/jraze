@@ -1,4 +1,4 @@
-# Jraze API server
+# jraze API server
 
 ## Pre-requisites
 - python >= 3.7
