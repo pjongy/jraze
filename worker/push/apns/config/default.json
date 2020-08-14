@@ -1,7 +1,16 @@
 {
   "push_worker": {
     "apns": {
-      "key_file_name": ""
+      "pem_cert": {
+        "file_name": ""
+      },
+      "p8_cert": {
+        "file_name": "",
+        "key_id": "",
+        "team_id": "",
+        "topic": ""
+      },
+      "cert_type": "pem"
     },
     "pool_size": 5,
     "redis": {

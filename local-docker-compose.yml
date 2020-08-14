@@ -50,7 +50,7 @@ services:
     depends_on:
       - mysql
       - redis-mq
-  push-worker:
+  push-worker-fcm:
     build:
       context: .
       dockerfile: worker/push/fcm/Dockerfile
@@ -68,6 +68,31 @@ services:
     networks:
       local_net:
         ipv4_address: 172.12.1.5
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis-mq
+  push-worker-apns:
+    build:
+      context: .
+      dockerfile: worker/push/apns/Dockerfile
+    volumes:
+      - ${PUSH_WORKER__APNS__PEM_CERT__FILE_NAME:-./push/apns}:/apns.pem
+      - ${PUSH_WORKER__APNS__P8_CERT__FILE_NAME:-./push/apns}:/apns.p8
+    environment:
+      ENV: dev
+      PUSH_WORKER__POOL_SIZE: 1
+      PUSH_WORKER__REDIS__PASSWORD: redis_password
+      PUSH_WORKER__REDIS__HOST: 172.12.1.3
+      PUSH_WORKER__APNS__PEM_CERT__FILE_NAME: /apns.pem
+      PUSH_WORKER__APNS__P8_CERT__FILE_NAME: /apns.p8
+      PUSH_WORKER__APNS__P8_CERT__KEY_ID: ${PUSH_WORKER__APNS__P8_CERT__KEY_ID:-empty}
+      PUSH_WORKER__APNS__P8_CERT__TEAM_ID: ${PUSH_WORKER__APNS__P8_CERT__TEAM_ID:-empty}
+      PUSH_WORKER__APNS__P8_CERT__TOPIC: ${PUSH_WORKER__APNS__P8_CERT__TOPIC:-empty}
+      PUSH_WORKER__APNS__CERT_TYPE: ${PUSH_WORKER__APNS__CERT_TYPE}
+    networks:
+      local_net:
+        ipv4_address: 172.12.1.8
     restart: unless-stopped
     depends_on:
       - mysql

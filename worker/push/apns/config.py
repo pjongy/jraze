@@ -9,14 +9,22 @@ class Config:
     @deserialize.parser('pool_size', int)
     class APNsPushWorker:
         class APNs:
-            key_file_name: str
-            key_id: str
-            team_id: str
+            class PEMCert:
+                file_name: str
+
+            class P8Cert:
+                file_name: str
+                key_id: str
+                team_id: str
+                topic: str  # Bundle id
+
+            pem_cert: PEMCert
+            p8_cert: P8Cert
+            cert_type: str
 
         @deserialize.default('port', 6379)
         @deserialize.parser('port', int)
         class Redis:
-
             @deserialize.parser('database', int)
             class Database:
                 database: int
