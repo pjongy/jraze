@@ -3,16 +3,17 @@ from typing import List, Tuple
 
 import google.auth
 import google.auth.transport.requests
+import httpx
 from google.oauth2.service_account import Credentials
+from httpx import Response
 
 from common.logger.logger import get_logger
-from common.request import Request
 from worker.push.fcm.external.fcm.abstract import AbstractFCM
 
 logger = get_logger(__name__)
 
 
-class FCMClientV1(Request, AbstractFCM):
+class FCMClientV1(AbstractFCM):
     FCM_BASE_URL = 'https://fcm.googleapis.com/v1/projects/'
     SCOPES = ['https://www.googleapis.com/auth/firebase.messaging']
 
@@ -34,30 +35,32 @@ class FCMClientV1(Request, AbstractFCM):
         data: dict
     ) -> Tuple[int, int]:
         PUSH_SEND_PATH = f'{self.project_id}/messages:send'
-        results = await asyncio.gather(*[
-            self.post(
-                url=f'{self.FCM_BASE_URL}{PUSH_SEND_PATH}',
-                parameters={
-                    "message": {
-                        "token": target,
-                        **data
+        async with httpx.AsyncClient() as client:
+            results: List[Response] = await asyncio.gather(*[
+                client.post(
+                    url=f'{self.FCM_BASE_URL}{PUSH_SEND_PATH}',
+                    json={
+                        "message": {
+                            "token": target,
+                            **data
+                        }
+                    },
+                    headers={
+                        'Authorization': f'Bearer {self.get_access_token()}'
                     }
-                },
-                headers={
-                    'Authorization': f'Bearer {self.get_access_token()}'
-                }
-            ) for target in targets
-        ])
+                )
+                for target in targets
+            ])
 
-        success = 0
-        failed = len(targets)
-        for status, response, _ in results:
-            logger.debug(response)
-            if not 200 <= status < 300:
-                logger.error(f'fcm data sent failed {response}')
+            success = 0
+            failed = len(targets)
+            for response in results:
+                logger.debug(response)
+                if not 200 <= response.status_code < 300:
+                    logger.error(f'fcm data sent failed {response}')
 
-            if 'name' in response:
-                success += 1
-        failed -= success
+                if 'name' in response.json():
+                    success += 1
+            failed -= success
 
-        return success, failed
+            return success, failed

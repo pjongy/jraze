@@ -1,13 +1,14 @@
 from typing import List, Tuple
 
+import httpx
+
 from common.logger.logger import get_logger
-from common.request import Request
 from worker.push.fcm.external.fcm.abstract import AbstractFCM
 
 logger = get_logger(__name__)
 
 
-class FCMClientLegacy(Request, AbstractFCM):
+class FCMClientLegacy(AbstractFCM):
     FCM_API_HOST = 'https://fcm.googleapis.com'
 
     def __init__(self, server_key):
@@ -23,14 +24,16 @@ class FCMClientLegacy(Request, AbstractFCM):
             **data,
             "registration_ids": targets
         }
-        status, response, _ = await self.post(
-            url=f'{self.FCM_API_HOST}{PUSH_SEND_PATH}',
-            parameters=body,
-            headers={'Authorization': f'key={self.server_key}'}
-        )
-        logger.debug(response)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url=f'{self.FCM_API_HOST}{PUSH_SEND_PATH}',
+                json=body,
+                headers={'Authorization': f'key={self.server_key}'}
+            )
+            logger.debug(response)
 
-        if not 200 <= status < 300:
-            raise PermissionError(f'fcm data sent failed {response}')
+            if not 200 <= response.status_code < 300:
+                raise PermissionError(f'fcm data sent failed {response}')
 
-        return response['success'], response['failure']
+            result = response.json()
+            return result['success'], result['failure']
