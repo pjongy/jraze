@@ -21,7 +21,7 @@ class Replica:
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
-        self.apns =  self.create_apns()
+        self.apns = self.create_apns()
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
@@ -56,7 +56,7 @@ class Replica:
             self.apns.send_notification(
                 NotificationRequest(
                     device_token=target,
-                    message={"aps": data},
+                    message=data,
                     collapse_key=collapse_key,
                     push_type=PushType.ALERT,
                 )
@@ -85,9 +85,11 @@ class Replica:
             sent, failed = await self._send_notification(
                 targets=job.device_tokens,
                 data={
-                    'alert': {
-                        'title': job.title,
-                        'body': job.body,
+                    'aps': {
+                        'alert': {
+                            'title': job.title,
+                            'body': job.body,
+                        }
                     }
                 }
             )
