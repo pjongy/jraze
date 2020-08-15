@@ -21,11 +21,7 @@ class Replica:
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
-        fcm_config = config.push_worker.fcm
-        self.fcm: AbstractFCM = {
-            'legacy': FCMClientLegacy(fcm_config.legacy.server_key),
-            'v1': FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
-        }[config.push_worker.fcm.client]
+        self.fcm: AbstractFCM = self.create_fcm_client()
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
@@ -34,6 +30,15 @@ class Replica:
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.job())
+
+    def create_fcm_client(self) -> AbstractFCM:
+        fcm_config = config.push_worker.fcm
+        if config.push_worker.fcm.client == 'legacy':
+            return FCMClientLegacy(fcm_config.legacy.server_key)
+        elif config.push_worker.fcm.client == 'v1':
+            return FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
+        else:
+            raise ValueError(f'fcm client not allow: {config.push_worker.fcm.client}')
 
     async def process_job(self, job_json):  # real worker if job published
         try:
