@@ -125,6 +125,40 @@ class NotificationStatus(enum.IntEnum):
           "reason": ...,
         }
         ```
+  - /-/:search *POST*
+    - purpose: Get devices that is matched for conditions
+    - request:
+        ```{
+            "device_ids": [
+              {... device ids ... },
+            ],
+            "conditions": {
+              "conditions": [ ... conditions ... ],
+              "key": ...compare key...,
+              "value": ...compare value...,
+              "join_type": ...[AND|OR]...
+             },
+            "start": 0,
+            "size": 10
+        }
+        ```
+    - response:
+        ```
+        {
+          "success": ...,
+          "result": {
+            "id": ..sequential number..,
+            "device_id": ...device id...,
+            "push_token": ...,
+            "send_platform": ...,
+            "device_platform": ...,
+            "created_at": ...,
+            "modified_at": ...,
+            "device_properties": [ {...key...: ...value...}, ... ]
+          },
+          "reason": ...,
+        }
+        ```
 
 ### Notification management
 

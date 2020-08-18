@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import tortoise
 from tortoise import QuerySet
@@ -164,8 +164,33 @@ async def find_devices_by_conditions(
     order_bys: List[str] = (),
 ) -> List[Device]:
     filter_ = _resolve_condition_clause_to_q(conditions)
-    query_set = Device.filter(filter_)
+    query_set = _device_relational_query_set(Device.filter(filter_))
     for order_by in order_bys:
         if order_by.isascii():
             query_set = query_set.order_by(order_by)
     return await query_set.offset(start).limit(size).all()
+
+
+async def search_devices(
+    device_ids: List[str],
+    conditions: ConditionClause,
+    start: int = 0,
+    size: int = 10,
+    order_bys: List[str] = (),
+) -> Tuple[int, List[Device]]:
+    filter_ = Q()
+    if conditions.key is not None:
+        filter_ = _resolve_condition_clause_to_q(conditions)
+    device_id_filter = Q()
+    if device_ids:
+        device_id_filter = Q(device_id__in=device_ids)
+    query_set = _device_relational_query_set(
+        Device.filter(filter_, device_id_filter)
+    )
+    for order_by in order_bys:
+        if order_by.isascii():
+            query_set = query_set.order_by(order_by)
+    return (
+        await query_set.count(),
+        await query_set.offset(start).limit(size).all()
+    )
