@@ -65,7 +65,6 @@ class FetchDeviceNotificationEventsRequest:
 @deserialize.default('device_ids', [])
 @deserialize.default('conditions', {})
 @deserialize.default('order_bys', [])
-@deserialize.parser('order_bys', lambda arg: arg.split(','))  # comma separated string to list
 class SearchDevicesRequest:
     device_ids: List[str]
     conditions: dict
@@ -80,7 +79,6 @@ class DevicesHttpResource:
 
     def route(self):
         self.router.add_route('POST', '', self.create_device)
-        self.router.add_route('POST', ':search', self.search_devices)
         self.router.add_route('GET', '/{device_id}', self.get_device)
         self.router.add_route('PUT', '/{device_id}', self.update_device)
         self.router.add_route('DELETE', '/{device_id}/properties', self.delete_properties)
@@ -89,6 +87,7 @@ class DevicesHttpResource:
             '/{device_id}/notifications',
             self.get_notification_events
         )
+        self.router.add_route('POST', '/-/:search', self.search_devices)
         self.router.add_route('POST', '/{device_id}/properties/:add', self.add_properties)
 
     @request_error_handler
