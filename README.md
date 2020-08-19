@@ -16,12 +16,13 @@
 
 ---
 
-## Pre-requisites
+## Quick start (on local)
+
+### Pre-requisites
 - docker >= 19.03.8
 - docker-compose >= 1.25.5
 - python >= 3.7
 
-## Quick start (on local)
 ```
 ------- Select FCM API version
 | $ export PUSH_WORKER__FCM__LEGACY__SERVER_KEY={..fcm server key..}
@@ -44,80 +45,6 @@
 $ docker-compose -f local-docker-compose.yml up -d
 ```
 
-## Worker
-
-### Push worker
-#### Run worker (FCM)
-```
-$ export ENV=dev
-------- Select FCM API version
-| $ export PUSH_WORKER__FCM__LEGACY__SERVER_KEY={..fcm server key..}
-| $ export PUSH_WORKER__FCM__CLIENT=legacy
--------
-| $ export PUSH_WORKER__FCM__V1__KEY_FILE_NAME={..fcm service account key path..}
-| $ export PUSH_WORKER__FCM__V1__PROJECT_ID={..fcm project id..}
-| $ export PUSH_WORKER__FCM__CLIENT=v1
--------
-$ export PUSH_WORKER__REDIS__HOST={...}
-$ export PUSH_WORKER__REDIS__PASSWORD={...}
-$ python3 -m worker.push.fcm
-```
-
-#### Run worker (APNs)
-```
-$ export ENV=dev
-------- Select P8 file(latest) for authentication
-| $ export PUSH_WORKER__APNS__P8_CERT__FILE_NAME={..apple apns p8 file path..}
-| $ export PUSH_WORKER__APNS__P8_CERT__KEY_ID={..apple apns key_id..}
-| $ export PUSH_WORKER__APNS__P8_CERT__TEAM_ID={..apple team_id..}
-| $ export PUSH_WORKER__APNS__P8_CERT__TOPIC={..apple product bundle id..}
-| $ export PUSH_WORKER__APNS__CERT_TYPE=p8
--------
-| $ export PUSH_WORKER__APNS__PEM_CERT__FILE_NAME={..apple apns pem file path..}
-| $ export PUSH_WORKER__APNS__CERT_TYPE=pem
--------
-$ export PUSH_WORKER__REDIS__HOST={...}
-$ export PUSH_WORKER__REDIS__PASSWORD={...}
-$ python3 -m worker.push.fcm
-```
-
-### Result worker
-#### Run worker
-```
-$ export ENV=dev
-$ export RESULT_WORKER__REDIS__HOST={...}
-$ export RESULT_WORKER__REDIS__PASSWORD={...}
-$ export RESULT_WORKER__MYSQL__HOST={...}
-$ export RESULT_WORKER__MYSQL__USER={...}
-$ export RESULT_WORKER__MYSQL__PASSWORD={...}
-$ python3 -m worker.result
-```
-
-### Notification worker
-#### Run worker
-```
-$ export ENV=dev
-$ export NOTIFICATION_WORKER__REDIS__HOST={...}
-$ export NOTIFICATION_WORKER__REDIS__PASSWORD={...}
-$ export NOTIFICATION_WORKER__MYSQL__HOST={...}
-$ export NOTIFICATION_WORKER__MYSQL__USER={...}
-$ export NOTIFICATION_WORKER__MYSQL__PASSWORD={...}
-$ python3 -m worker.notification
-```
-
-## API server
-
-### Run server
-```
-$ export ENV=dev
-$ export API_SERVER__MYSQL__HOST={...}
-$ export API_SERVER__MYSQL__USER={...}
-$ export API_SERVER__MYSQL__PASSWORD={...}
-$ export API_SERVER__REDIS__HOST={...}
-$ export API_SERVER__REDIS__PASSWORD={...}
-$ python3 -m apiserver
-```
-
 
 ## Project structure
 ```
@@ -125,6 +52,7 @@ $ python3 -m apiserver
   /apiserver
   /worker
     /push
+      /apns
       /fcm
     /result
     /notification
