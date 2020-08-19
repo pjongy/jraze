@@ -4,7 +4,7 @@
   <br/>
   <br/>
   <p>
-    ***Installable push sending service*** that can control push targets  <br/>
+    Installable push sending service which can control push targets  <br/>
     with their properties by notification's conditions.  
   </p>
   <p>
