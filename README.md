@@ -14,6 +14,7 @@
   </p>
 </div>
 
+---
 
 ## Pre-requisites
 - docker >= 19.03.8
