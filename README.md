@@ -1,5 +1,20 @@
-# jraze
-- ***Installable push sending service*** that can control push targets with their properties by notification's conditions
+<div align="center">
+  <br/>
+  <img src="./docs/image/jraze-logo.png" width="400"/>
+  <br/>
+  <br/>
+  <p>
+    Installable push sending service which can control push targets  <br/>
+    with their properties by notification's conditions.  
+  </p>
+  <p>
+    <a href="https://github.com/pjongy/jraze/blob/master/LICENSE">
+      <img src="https://img.shields.io/badge/license-MIT-blue.svg"/>
+    </a>
+  </p>
+</div>
+
+---
 
 ## Pre-requisites
 - docker >= 19.03.8
