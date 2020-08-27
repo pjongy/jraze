@@ -146,16 +146,18 @@ class NotificationStatus(enum.IntEnum):
         ```
         {
           "success": ...,
-          "result": {
-            "id": ..sequential number..,
-            "device_id": ...device id...,
-            "push_token": ...,
-            "send_platform": ...,
-            "device_platform": ...,
-            "created_at": ...,
-            "modified_at": ...,
-            "device_properties": [ {...key...: ...value...}, ... ]
-          },
+          "result": [
+              {
+                    "id": ..sequential number..,
+                    "device_id": ...device id...,
+                    "push_token": ...,
+                    "send_platform": ...,
+                    "device_platform": ...,
+                    "created_at": ...,
+                    "modified_at": ...,
+                    "device_properties": [ {...key...: ...value...}, ... ]
+                  }
+              ]
           "reason": ...,
         }
         ```

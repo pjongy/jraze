@@ -32,7 +32,7 @@
 | $ export PUSH_WORKER__FCM__V1__PROJECT_ID={..fcm project id..}
 | $ export PUSH_WORKER__FCM__CLIENT=v1
 -------
-------- Select P8 file(latest) for authentication
+------- Select APNs authorization method
 | $ export PUSH_WORKER__APNS__P8_CERT__FILE_NAME={..apple apns p8 file path..}
 | $ export PUSH_WORKER__APNS__P8_CERT__KEY_ID={..apple apns key_id..}
 | $ export PUSH_WORKER__APNS__P8_CERT__TEAM_ID={..apple team_id..}
