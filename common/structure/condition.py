@@ -1,14 +1,12 @@
 from typing import Optional, List
 
-import deserialize
 
-
-@deserialize.default('join_type', 'OR')
 class ConditionClause:
     conditions: Optional[List['ConditionClause']]
     key: Optional[str]
     value: Optional[str]
-    join_type: str
+    join_type: Optional[str]
+    operator: Optional[str]
 
 
 '''
@@ -18,15 +16,15 @@ class ConditionClause:
     'conditions': [
         {
             'conditions': [
-                {'key': '1', 'value': '11'},
-                {'key': '2', 'value': '22'}
+                {'key': '1', 'value': '11', 'operator': 'int_eq'},
+                {'key': '2', 'value': '22', 'operator': 'int_lte'}
             ],
             'join_type': 'AND'
         },
         {
             'conditions': [
-                {'key': '3', 'value': '33'},
-                {'key': '4', 'value': '44'}
+                {'key': '3', 'value': '33', 'operator': 'str_eq'},
+                {'key': '4', 'value': '44', 'operator': 'int_gte'}
             ],
             'join_type': 'AND'
         }
