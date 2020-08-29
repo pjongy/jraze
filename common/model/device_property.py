@@ -9,4 +9,5 @@ class DeviceProperty(Model):
     id = fields.BigIntField(pk=True)
     device = fields.ForeignKeyField('models.Device', related_name='device_properties')
     key = fields.CharField(max_length=255, index=True)
-    value = fields.CharField(max_length=255, index=True)
+    value_str = fields.CharField(max_length=255, index=True, null=True)
+    value_int = fields.IntField(index=True, null=True)
