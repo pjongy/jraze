@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Any
 
 import deserialize
 
@@ -34,12 +34,17 @@ class UpdateDeviceRequest:
     device_platform: DevicePlatform
 
 
+class DevicePropertyObject:
+    key: str
+    value: Any
+
+
 class AddDevicePropertiesRequest:
-    properties: List[DevicePropertyBridge]
+    properties: List[DevicePropertyObject]
 
 
 class DeleteDevicePropertiesRequest:
-    properties: List[DevicePropertyBridge]
+    properties: List[DevicePropertyObject]
 
 
 @deserialize.default('start', 0)
@@ -156,6 +161,29 @@ class DevicesHttpResource:
         )
         return json_response(result=device_model_to_dict(row=device))
 
+    def _convert_property(self, properties: List[DevicePropertyObject]):
+        device_property_bridges = []
+        for property_ in properties:
+            if type(property_.value) is str:
+                device_property_bridges.append(
+                    DevicePropertyBridge(
+                        key=property_.key,
+                        value_str=property_.value,
+                        value_int=None
+                    )
+                )
+            elif type(property_.value) is int:
+                device_property_bridges.append(
+                    DevicePropertyBridge(
+                        key=property_.key,
+                        value_str=None,
+                        value_int=property_.value
+                    )
+                )
+            else:
+                raise TypeError('int/str type only (properties.value)')
+        return device_property_bridges
+
     @request_error_handler
     async def add_properties(self, request):
         device_id = request.match_info['device_id']
@@ -168,9 +196,14 @@ class DevicesHttpResource:
         if target_device is None:
             return json_response(reason=f'invalid device_id {device_id}', status=404)
 
+        try:
+            properties = self._convert_property(request.properties)
+        except TypeError as e:
+            return json_response(reason=e.args[0], status=400)
+
         device_properties = await add_device_properties(
             target_device=target_device,
-            device_properties=request.properties,
+            device_properties=properties,
         )
 
         response = device_model_to_dict(row=target_device)
@@ -193,9 +226,14 @@ class DevicesHttpResource:
         if target_device is None:
             return json_response(reason=f'invalid device_id {device_id}', status=404)
 
+        try:
+            properties = self._convert_property(request.properties)
+        except TypeError as e:
+            return json_response(reason=e.args[0], status=400)
+
         affected_rows = await remove_device_properties(
             target_device=target_device,
-            device_properties=request.properties,
+            device_properties=properties,
         )
 
         return json_response(result={'deleted': affected_rows})

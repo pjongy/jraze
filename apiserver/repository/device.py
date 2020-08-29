@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List, Tuple, Optional
 
 import tortoise
 from tortoise import QuerySet
@@ -31,9 +32,13 @@ def device_model_to_dict(row: Device):
     return device_dict
 
 
-def device_property_model_to_dict(row: DeviceProperty):
+def device_property_model_to_dict(row: DeviceProperty) -> dict:
+    if row.value_int is not None:
+        return {row.key: row.value_int}
+    if row.value_str is not None:
+        return {row.key: row.value_str}
     return {
-        row.key: row.value,
+        row.key: None,
     }
 
 
@@ -94,9 +99,11 @@ async def update_device(
     return target_device
 
 
+@dataclass
 class DevicePropertyBridge:
     key: str
-    value: str
+    value_str: Optional[str]
+    value_int: Optional[int]
 
 
 async def add_device_properties(
@@ -109,7 +116,8 @@ async def add_device_properties(
             DeviceProperty(
                 device=target_device,
                 key=device_property.key,
-                value=device_property.value,
+                value_str=device_property.value_str,
+                value_int=device_property.value_int,
             )
         )
     if addition_items:
@@ -126,7 +134,8 @@ async def remove_device_properties(
         Q(
             device=target_device,
             key=device_property.key,
-            value=device_property.value,
+            value_str=device_property.value_str,
+            value_int=device_property.value_int,
         )
         for device_property in device_properties
     ]
