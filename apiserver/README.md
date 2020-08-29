@@ -30,6 +30,20 @@ class NotificationStatus(enum.IntEnum):
     DELETED = 4
 ```
 
+```python
+# apiserver/repository/device.py
+available_join_types = {'OR', 'AND'}
+operators = {
+    'int_eq': VALUE_INT,
+    'int_gt': f'{VALUE_INT}__gt',
+    'int_gte': f'{VALUE_INT}__gte',
+    'int_lt': f'{VALUE_INT}__lt',
+    'int_lte': f'{VALUE_INT}__lte',
+    'str_exists': f'{VALUE_STR}__contains',
+    'str_eq': VALUE_STR,
+}
+```
+
 #### API specs
 
 - /devices
@@ -76,7 +90,8 @@ class NotificationStatus(enum.IntEnum):
         ```
         {
           "properties": [
-            {"key": "k", "value": "v"}
+            {"key": "k", "value": "v"},  # Request str type (quoted) value means key k's type is "string"
+            {"key": "k", "value": 1}  # Request int type (not-quoted) value means key k's type is "int"
           ]
         }
         ```
@@ -88,7 +103,8 @@ class NotificationStatus(enum.IntEnum):
         ```
         {
           "properties": [
-            {"key": "k", "value": "v"}
+            {"key": "k", "value": "v"},  # Request str type (quoted) value means key k's type is "string"
+            {"key": "k", "value": 1}  # Request int type (not-quoted) value means key k's type is "int"
           ]
         }
         ```
@@ -134,9 +150,10 @@ class NotificationStatus(enum.IntEnum):
             ],
             "conditions": {
               "conditions": [ ... conditions ... ],
-              "key": ...compare key...,
-              "value": ...compare value...,
-              "join_type": ...[AND|OR]...
+              "key": ...compare key...[str],
+              "value": ...compare value...[str],
+              "operator": ... operator e.g) str_eq/int_lte....[str],
+              "join_type": ...[AND|OR]...[str]
              },
             "start": 0,
             "size": 10
@@ -183,9 +200,10 @@ class NotificationStatus(enum.IntEnum):
               "icon_url": ...,
               "conditions": {
                  "conditions": [ ... conditions ... ],
-                 "key": ...compare key...,
-                 "value": ...compare value...,
-                 "join_type": ...[AND|OR]...
+                 "key": ...compare key...[str],
+                 "value": ...compare value...[str],
+                 "operator": ... operator e.g) str_eq/int_lte....[str],
+                 "join_type": ...[AND|OR]...[str]
               },
               "status": ...,
               "scheduled_at": ...push scheduled time...,
@@ -221,9 +239,10 @@ class NotificationStatus(enum.IntEnum):
               "icon_url": ...,
               "conditions": {
                  "conditions": [ ... conditions ... ],
-                 "key": ...compare key...,
-                 "value": ...compare value...,
-                 "join_type": ...[AND|OR]...
+                 "key": ...compare key...[str],
+                 "value": ...compare value...[str],
+                 "operator": ... operator e.g) str_eq/int_lte....[str],
+                 "join_type": ...[AND|OR]...[str]
               },
               "status": ...,
               "scheduled_at": ...push scheduled time...,
