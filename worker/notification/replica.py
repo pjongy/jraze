@@ -1,14 +1,12 @@
 import asyncio
 import json
 import multiprocessing
-import time
 
 import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
 from common.model.device import SendPlatform
-from common.model.device_notification_event import Event
 from common.queue.notification import blocking_get_notification_job, publish_notification_job, \
     NotificationPriority
 from common.queue.push.apns import publish_apns_job
@@ -21,7 +19,7 @@ from common.structure.job.notification import NotificationJob, Notification
 from common.util import object_to_dict, string_to_utc_datetime, utc_now
 from worker.notification.config import config
 from worker.notification.repository.device import find_devices_by_conditions
-from worker.notification.repository.device_notification_event import add_device_notification_events
+from worker.notification.repository.device_notification_log import add_device_notification_logs
 
 logger = get_logger(__name__)
 
@@ -85,10 +83,9 @@ class Replica:
             }
         )
         tasks = [
-            add_device_notification_events(
+            add_device_notification_logs(
                 devices=devices,
                 notification_id=notification.id,
-                event=Event.SENT,
             ),
             self._publish_job_to_fcm(fcm_job=fcm_job),
             self._publish_job_to_apns(apns_job=apns_job)

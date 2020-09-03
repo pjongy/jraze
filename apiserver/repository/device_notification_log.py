@@ -4,33 +4,29 @@ from tortoise.query_utils import Q
 
 from apiserver.repository.notification import notification_model_to_dict
 from common.model.device import Device
-from common.model.device_notification_event import Event, DeviceNotificationEvent
+from common.model.device_notification_log import DeviceNotificationLog
 
 
-def device_notification_event_model_to_dict(row: DeviceNotificationEvent):
-    device_notification_event_dict = {
+def device_notification_log_model_to_dict(row: DeviceNotificationLog):
+    device_notification_log_dict = {
         'id': row.id,
         'notification': notification_model_to_dict(row.notification),
-        'event': row.event,
         'created_at': row.created_at,
     }
-    return device_notification_event_dict
+    return device_notification_log_dict
 
 
 async def find_notification_events_by_external_id(
     device: Device,
     start: int = 0,
     size: int = 10,
-    events: List[Event] = (),
     order_bys: List[str] = (),
 ):
-    event_filter = [
+    filter_ = [
         Q(device=device)
     ]
-    if events:
-        event_filter.append(Q(event__in=events))
 
-    query_set = DeviceNotificationEvent.filter(Q(*event_filter)).prefetch_related(
+    query_set = DeviceNotificationLog.filter(Q(*filter_)).prefetch_related(
         'device', 'notification'
     )
     for order_by in order_bys:

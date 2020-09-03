@@ -1,20 +1,18 @@
 from typing import List
 
 from common.model.device import Device
-from common.model.device_notification_event import DeviceNotificationEvent, Event
+from common.model.device_notification_log import DeviceNotificationLog
 
 
-async def add_device_notification_events(
+async def add_device_notification_logs(
     devices: List[Device],
     notification_id: int,
-    event: Event
 ) -> None:
-    return await DeviceNotificationEvent.bulk_create(
+    return await DeviceNotificationLog.bulk_create(
         [
-            DeviceNotificationEvent(
+            DeviceNotificationLog(
                 device=device,
                 notification_id=notification_id,
-                event=event
             )
             for device in devices
         ]

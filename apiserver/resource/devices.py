@@ -6,12 +6,11 @@ from apiserver.decorator.request import request_error_handler
 from apiserver.repository.device import find_device_by_external_id, device_model_to_dict, \
     create_device, update_device, DevicePropertyBridge, add_device_properties, \
     device_property_model_to_dict, remove_device_properties, search_devices
-from apiserver.repository.device_notification_event import find_notification_events_by_external_id, \
-    device_notification_event_model_to_dict
+from apiserver.repository.device_notification_log import find_notification_events_by_external_id, \
+    device_notification_log_model_to_dict
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from common.model.device import DevicePlatform, SendPlatform
-from common.model.device_notification_event import Event
 from common.structure.condition import ConditionClause
 
 logger = get_logger(__name__)
@@ -42,16 +41,10 @@ class DeleteDevicePropertiesRequest:
 @deserialize.default('start', 0)
 @deserialize.default('size', 10)
 @deserialize.default('order_bys', [])
-@deserialize.default('events', [])
 @deserialize.parser('order_bys', lambda arg: arg.split(','))  # comma separated string to list
 @deserialize.parser('start', int)
 @deserialize.parser('size', int)
-@deserialize.parser(
-    'events',
-    lambda arg: [Event(int(elem)) for elem in arg.split(',')]
-)  # comma separated string to list
 class FetchDeviceNotificationEventsRequest:
-    events: List[Event]
     start: int
     size: int
     order_bys: List[str]
@@ -241,7 +234,6 @@ class DevicesHttpResource:
 
         total, events = await find_notification_events_by_external_id(
             device=device,
-            events=query_params.events,
             start=query_params.start,
             size=query_params.size,
             order_bys=list(available_order_by_fields.intersection(query_params.order_bys)),
@@ -250,7 +242,7 @@ class DevicesHttpResource:
         return json_response(result={
             'total': total,
             'events': [
-                device_notification_event_model_to_dict(event)
+                device_notification_log_model_to_dict(event)
                 for event in events
             ]
         })
