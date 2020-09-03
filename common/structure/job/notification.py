@@ -22,7 +22,7 @@ class Notification(Push):
 
 
 class Unrecorded(Push):
-    device_ids: Optional[List[str]]
+    external_ids: Optional[List[str]]
     conditions: Optional[List[ConditionClause]]
 
 

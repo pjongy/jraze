@@ -26,7 +26,7 @@ class Device(Model, TimestampMixin):
         table = 'device'
 
     id = fields.BigIntField(pk=True)
-    device_id = fields.CharField(max_length=255, index=True)
+    external_id = fields.CharField(max_length=255, index=True)
     push_token = fields.CharField(max_length=255, index=True, null=True)  # push token from fcm
     send_platform = typing.cast(
         SendPlatform,

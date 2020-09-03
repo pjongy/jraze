@@ -1,13 +1,12 @@
-import uuid
 from typing import List, Any
 
 import deserialize
 
 from apiserver.decorator.request import request_error_handler
-from apiserver.repository.device import find_device_by_device_id, device_model_to_dict, \
+from apiserver.repository.device import find_device_by_external_id, device_model_to_dict, \
     create_device, update_device, DevicePropertyBridge, add_device_properties, \
     device_property_model_to_dict, remove_device_properties, search_devices
-from apiserver.repository.device_notification_event import find_notification_events_by_device_id, \
+from apiserver.repository.device_notification_event import find_notification_events_by_external_id, \
     device_notification_event_model_to_dict
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
@@ -20,15 +19,8 @@ logger = get_logger(__name__)
 
 @deserialize.default('device_platform', DevicePlatform.UNKNOWN)
 @deserialize.default('send_platform', SendPlatform.UNKNOWN)
-class CreateDeviceRequest:
-    push_token: str
-    send_platform: SendPlatform
-    device_platform: DevicePlatform
-
-
-@deserialize.default('device_platform', DevicePlatform.UNKNOWN)
-@deserialize.default('send_platform', SendPlatform.UNKNOWN)
 class UpdateDeviceRequest:
+    external_id: str
     push_token: str
     send_platform: SendPlatform
     device_platform: DevicePlatform
@@ -67,11 +59,11 @@ class FetchDeviceNotificationEventsRequest:
 
 @deserialize.parser('start', int)
 @deserialize.parser('size', int)
-@deserialize.default('device_ids', [])
+@deserialize.default('external_ids', [])
 @deserialize.default('conditions', {})
 @deserialize.default('order_bys', [])
 class SearchDevicesRequest:
-    device_ids: List[str]
+    external_ids: List[str]
     conditions: dict
     start: int
     size: int
@@ -83,25 +75,24 @@ class DevicesHttpResource:
         self.router = router
 
     def route(self):
-        self.router.add_route('POST', '', self.create_device)
-        self.router.add_route('GET', '/{device_id}', self.get_device)
-        self.router.add_route('PUT', '/{device_id}', self.update_device)
-        self.router.add_route('DELETE', '/{device_id}/properties', self.delete_properties)
+        self.router.add_route('PUT', '', self.upsert_device)
+        self.router.add_route('GET', '/{external_id}', self.get_device)
+        self.router.add_route('DELETE', '/{external_id}/properties', self.delete_properties)
         self.router.add_route(
             'GET',
-            '/{device_id}/notifications',
+            '/{external_id}/notifications',
             self.get_notification_events
         )
         self.router.add_route('POST', '/-/:search', self.search_devices)
-        self.router.add_route('POST', '/{device_id}/properties/:add', self.add_properties)
+        self.router.add_route('POST', '/{external_id}/properties/:add', self.add_properties)
 
     @request_error_handler
     async def get_device(self, request):
-        device_id = request.match_info['device_id']
-        device = await find_device_by_device_id(device_id=device_id)
+        external_id = request.match_info['external_id']
+        device = await find_device_by_external_id(external_id=external_id)
 
         if device is None:
-            return json_response(reason=f'invalid device_id {device_id}', status=404)
+            return json_response(reason=f'invalid external_id {external_id}', status=404)
 
         return json_response(result=device_model_to_dict(row=device))
 
@@ -116,7 +107,7 @@ class DevicesHttpResource:
             return json_response(reason=f'wrong condition clause {error}', status=400)
 
         total, devices = await search_devices(
-            device_ids=request.device_ids,
+            external_ids=request.external_ids,
             conditions=conditions,
             start=request.start,
             size=request.size,
@@ -132,33 +123,26 @@ class DevicesHttpResource:
         })
 
     @request_error_handler
-    async def create_device(self, request):
-        request: CreateDeviceRequest = convert_request(CreateDeviceRequest, await request.json())
-
-        device_id = str(uuid.uuid1())
-        device = await create_device(
-            device_id=device_id,
-            push_token=request.push_token,
-            send_platform=request.send_platform,
-            device_platform=request.device_platform,
-        )
-        return json_response(result=device_model_to_dict(row=device))
-
-    @request_error_handler
-    async def update_device(self, request):
-        device_id = request.match_info['device_id']
-        request = convert_request(UpdateDeviceRequest, await request.json())
-        target_device = await find_device_by_device_id(device_id=device_id)
+    async def upsert_device(self, request):
+        request: UpdateDeviceRequest = convert_request(
+            UpdateDeviceRequest, await request.json())
+        external_id = request.external_id
+        target_device = await find_device_by_external_id(external_id=external_id)
 
         if target_device is None:
-            return json_response(reason=f'invalid device_id {device_id}', status=404)
-
-        device = await update_device(
-            target_device=target_device,
-            push_token=request.push_token,
-            send_platform=request.send_platform,
-            device_platform=request.device_platform,
-        )
+            device = await create_device(
+                external_id=external_id,
+                push_token=request.push_token,
+                send_platform=request.send_platform,
+                device_platform=request.device_platform,
+            )
+        else:
+            device = await update_device(
+                target_device=target_device,
+                push_token=request.push_token,
+                send_platform=request.send_platform,
+                device_platform=request.device_platform,
+            )
         return json_response(result=device_model_to_dict(row=device))
 
     def _convert_property(self, properties: List[DevicePropertyObject]):
@@ -186,15 +170,15 @@ class DevicesHttpResource:
 
     @request_error_handler
     async def add_properties(self, request):
-        device_id = request.match_info['device_id']
+        external_id = request.match_info['external_id']
         request: AddDevicePropertiesRequest = convert_request(
             AddDevicePropertiesRequest,
             await request.json()
         )
-        target_device = await find_device_by_device_id(device_id=device_id)
+        target_device = await find_device_by_external_id(external_id=external_id)
 
         if target_device is None:
-            return json_response(reason=f'invalid device_id {device_id}', status=404)
+            return json_response(reason=f'invalid external_id {external_id}', status=404)
 
         try:
             properties = self._convert_property(request.properties)
@@ -216,15 +200,15 @@ class DevicesHttpResource:
 
     @request_error_handler
     async def delete_properties(self, request):
-        device_id = request.match_info['device_id']
+        external_id = request.match_info['external_id']
         request: DeleteDevicePropertiesRequest = convert_request(
             DeleteDevicePropertiesRequest,
             await request.json()
         )
-        target_device = await find_device_by_device_id(device_id=device_id)
+        target_device = await find_device_by_external_id(external_id=external_id)
 
         if target_device is None:
-            return json_response(reason=f'invalid device_id {device_id}', status=404)
+            return json_response(reason=f'invalid external_id {external_id}', status=404)
 
         try:
             properties = self._convert_property(request.properties)
@@ -240,7 +224,7 @@ class DevicesHttpResource:
 
     @request_error_handler
     async def get_notification_events(self, request):
-        device_id = request.match_info['device_id']
+        external_id = request.match_info['external_id']
         query_params: FetchDeviceNotificationEventsRequest = convert_request(
             FetchDeviceNotificationEventsRequest,
             dict(request.rel_url.query),
@@ -250,12 +234,12 @@ class DevicesHttpResource:
             'id', '-id',
         }
 
-        device = await find_device_by_device_id(device_id=device_id)
+        device = await find_device_by_external_id(external_id=external_id)
 
         if device is None:
-            return json_response(reason=f'invalid device_id {device_id}', status=404)
+            return json_response(reason=f'invalid external_id {external_id}', status=404)
 
-        total, events = await find_notification_events_by_device_id(
+        total, events = await find_notification_events_by_external_id(
             device=device,
             events=query_params.events,
             start=query_params.start,

@@ -47,7 +47,7 @@ operators = {
 #### API specs
 
 - /devices
-  - /{device_id} *GET*
+  - /{external_id} *GET*
     - purpose: Fetch selected device information
     - request: `Empty`
     - response:
@@ -56,7 +56,7 @@ operators = {
           "success": ...,
           "result": {
             "id": ..sequential number..,
-            "device_id": ...device id...,
+            "external_id": ...device id...,
             "push_token": ...,
             "send_platform": ...,
             "device_platform": ...,
@@ -78,13 +78,20 @@ operators = {
           "device_platform": 1  # ANDROID
         }
         ```
-    - response: `Same as /devices/{device_id} GET response`
+    - response: `Same as /devices/{external_id} GET response`
 
-  - /{device_id} *PUT*
-    - purpose: Update device information
-    - `Same as /devices POST`
+  - / *PUT*
+    - purpose: Update or Create device information
+        ```
+        {
+          "external_id": ... classifier from external accesss (set up manually)...[str]
+          "push_token": "{{PUSH_TOKEN}}",
+          "send_platform": 1,  # FCM
+          "device_platform": 1  # ANDROID
+        }
+        ```
 
-  - /{device_id}/properties/:add *POST*
+  - /{external_id}/properties/:add *POST*
     - purpose: Add device's properties that can be filtered by condition clause
     - request:
         ```
@@ -95,9 +102,9 @@ operators = {
           ]
         }
         ```
-    - response: `Same as /devices/{device_id} GET response`
+    - response: `Same as /devices/{external_id} GET response`
 
-  - /{device_id}/properties *DELETE*
+  - /{external_id}/properties *DELETE*
     - purpose: Delete device's properties
     - request:
         ```
@@ -108,9 +115,9 @@ operators = {
           ]
         }
         ```
-    - response: `Same as /devices/{device_id} GET response`
+    - response: `Same as /devices/{external_id} GET response`
 
-  - /{device_id}/notifications *GET*
+  - /{external_id}/notifications *GET*
     - purpose: Fetch device's tracked notifications with orders
     - query_string:
         ```
@@ -145,7 +152,7 @@ operators = {
     - purpose: Get devices that is matched for conditions
     - request:
         ```{
-            "device_ids": [
+            "external_ids": [
               {... device ids ... },
             ],
             "conditions": {
@@ -166,7 +173,7 @@ operators = {
           "result": [
               {
                     "id": ..sequential number..,
-                    "device_id": ...device id...,
+                    "external_id": ...device id...,
                     "push_token": ...,
                     "send_platform": ...,
                     "device_platform": ...,

@@ -17,7 +17,7 @@ def device_notification_event_model_to_dict(row: DeviceNotificationEvent):
     return device_notification_event_dict
 
 
-async def find_notification_events_by_device_id(
+async def find_notification_events_by_external_id(
     device: Device,
     start: int = 0,
     size: int = 10,

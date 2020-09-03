@@ -14,7 +14,7 @@ from common.util import utc_now
 def device_model_to_dict(row: Device):
     device_dict = {
         'id': row.id,
-        'device_id': row.device_id,
+        'external_id': row.external_id,
         'push_token': row.push_token,
         'send_platform': row.send_platform,
         'device_platform': row.device_platform,
@@ -48,10 +48,10 @@ def _device_relational_query_set(query_set: QuerySet[Device]) -> QuerySet[Device
     )
 
 
-async def find_device_by_device_id(device_id: str) -> Device:
+async def find_device_by_external_id(external_id: str) -> Device:
     return await _device_relational_query_set(
         Device.filter(
-            device_id=device_id
+            external_id=external_id
         ).order_by(
             'modified_at', 'created_at'
         )
@@ -72,13 +72,13 @@ async def find_device_by_push_token(
 
 
 async def create_device(
-    device_id: str,
+    external_id: str,
     push_token: str = None,
     send_platform: SendPlatform = SendPlatform.UNKNOWN,
     device_platform: DevicePlatform = DevicePlatform.UNKNOWN,
 ) -> Device:
     return await Device.create(
-        device_id=device_id,
+        external_id=external_id,
         send_platform=send_platform,
         push_token=push_token,
         device_platform=device_platform,
@@ -199,18 +199,18 @@ async def find_devices_by_conditions(
 
 
 async def search_devices(
-    device_ids: List[str],
+    external_ids: List[str],
     conditions: ConditionClause,
     start: int = 0,
     size: int = 10,
     order_bys: List[str] = (),
 ) -> Tuple[int, List[Device]]:
     filter_ = _resolve_condition_clause_to_q(conditions)
-    device_id_filter = Q()
-    if device_ids:
-        device_id_filter = Q(device_id__in=device_ids)
+    external_id_filter = Q()
+    if external_ids:
+        external_id_filter = Q(external_id__in=external_ids)
     query_set = _device_relational_query_set(
-        Device.filter(filter_, device_id_filter)
+        Device.filter(filter_, external_id_filter)
     )
     for order_by in order_bys:
         if order_by.isascii():
