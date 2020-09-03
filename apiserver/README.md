@@ -266,3 +266,25 @@ operators = {
     - purpose: Launch push campaign
     - request: `Empty`
     - response: `Same as /notifications/{notification_id} GET response`
+
+
+### Internal API
+
+- /internal
+  - /devices/logs/notification:add *POST*
+    - purpose: Create device's notification log (notification worker uses)
+    - request:
+        ```
+        {
+          "device_ids": [, ...int], # Device's PK value (device.id) not external id
+          "notification_id": ..int, # Notification's PK value (notification.id) not notification uuid
+        }
+        ```
+    - response:
+        ```
+        {
+          "success": ...,
+          "result": ...int, # Requested device count (if bulk insertion completely done)
+          "reason": ...,
+        }
+        ```
