@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import deserialize
 
@@ -6,6 +7,8 @@ from common.configutil import get_config
 
 
 class Config:
+    @deserialize.default('internal_api_keys', [])
+    @deserialize.parser('internal_api_keys', lambda arg: arg.split(','))
     @deserialize.default('port', 8080)
     @deserialize.parser('port', int)
     class APIServer:
@@ -38,6 +41,8 @@ class Config:
         redis: Redis
         port: int
         notification_worker: Worker
+        internal_api_keys: List[str]  # comma separated string to list
+
     api_server: APIServer
 
 

@@ -43,6 +43,7 @@ services:
       API_SERVER__MYSQL__PASSWORD: mysql_password
       API_SERVER__REDIS__HOST: 172.12.1.3
       API_SERVER__REDIS__PASSWORD: redis_password
+      API_SERVER__INTERNAL_API_KEYS: internal_key_1,internal_key_2
     networks:
       local_net:
         ipv4_address: 172.12.1.4

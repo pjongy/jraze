@@ -5,6 +5,7 @@ from aiohttp import web
 
 from apiserver.config import config
 from apiserver.resource.devices import DevicesHttpResource
+from apiserver.resource.internal import InternalHttpResource
 from apiserver.resource.notifications import NotificationsHttpResource
 from common.logger.logger import get_logger
 from common.storage.init import init_db
@@ -45,10 +46,13 @@ async def application():
         }
     }
     external = {}
-    secret = {}
+    secret = {
+        'internal_api_keys': config.api_server.internal_api_keys,
+    }
     resource_list = {
         '/devices': DevicesHttpResource,
         '/notifications': NotificationsHttpResource,
+        '/internal': InternalHttpResource,
     }
 
     for path, resource in resource_list.items():
