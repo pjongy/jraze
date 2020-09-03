@@ -124,11 +124,10 @@ services:
     environment:
       ENV: dev
       NOTIFICATION_WORKER__POOL_SIZE: 1
-      NOTIFICATION_WORKER__MYSQL__HOST: 172.12.1.2
-      NOTIFICATION_WORKER__MYSQL__USER: root
-      NOTIFICATION_WORKER__MYSQL__PASSWORD: mysql_password
       NOTIFICATION_WORKER__REDIS__PASSWORD: redis_password
       NOTIFICATION_WORKER__REDIS__HOST: 172.12.1.3
+      NOTIFICATION_WORKER__EXTERNAL__JRAZE__BASE_URL: http://172.12.1.4:8080/
+      NOTIFICATION_WORKER__EXTERNAL__JRAZE__X_SERVER_KEY: internal_key_1
     networks:
       local_net:
         ipv4_address: 172.12.1.7

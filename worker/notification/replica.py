@@ -1,4 +1,5 @@
 import asyncio
+import enum
 import json
 import multiprocessing
 
@@ -6,22 +7,25 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
-from common.model.device import SendPlatform
 from common.queue.notification import blocking_get_notification_job, publish_notification_job, \
     NotificationPriority
 from common.queue.push.apns import publish_apns_job
 from common.queue.push.fcm import publish_fcm_job
-from common.storage.init import init_db
 from common.structure.condition import ConditionClause
 from common.structure.job.apns import APNsJob
 from common.structure.job.fcm import FCMJob
 from common.structure.job.notification import NotificationJob, Notification
 from common.util import object_to_dict, string_to_utc_datetime, utc_now
 from worker.notification.config import config
-from worker.notification.repository.device import find_devices_by_conditions
-from worker.notification.repository.device_notification_log import add_device_notification_logs
+from worker.notification.external.jraze.jraze import JrazeApi
 
 logger = get_logger(__name__)
+
+
+class SendPlatform(enum.IntEnum):
+    UNKNOWN = 0
+    FCM = 1
+    APNS = 2
 
 
 class Replica:
@@ -34,6 +38,7 @@ class Replica:
         self.redis_port = config.notification_worker.redis.port
         self.redis_password = config.notification_worker.redis.password
         self.redis_pool = None
+        self.jraze_api = JrazeApi()
 
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
@@ -46,19 +51,21 @@ class Replica:
         start: int,
         size: int
     ):
-        devices = await find_devices_by_conditions(
-            conditions=conditions,
+        search_device_result = await self.jraze_api.search_devices(
+            conditions=object_to_dict(conditions),
             start=start,
             size=size,
         )
         fcm_tokens = []
         apns_tokens = []
 
-        for device in devices:
+        device_ids = []
+        for device in search_device_result.result.devices:
             if device.send_platform == SendPlatform.FCM:
                 fcm_tokens.append(device.push_token)
             if device.send_platform == SendPlatform.APNS:
                 apns_tokens.append(device.push_token)
+            device_ids.append(device.id)
 
         fcm_job: FCMJob = deserialize.deserialize(
             FCMJob, {
@@ -83,8 +90,8 @@ class Replica:
             }
         )
         tasks = [
-            add_device_notification_logs(
-                devices=devices,
+            self.jraze_api.log_notification(
+                device_ids=device_ids,
                 notification_id=notification.id,
             ),
             self._publish_job_to_fcm(fcm_job=fcm_job),
@@ -117,6 +124,7 @@ class Replica:
 
                 fetching_size = min(worker_own_jobs, self.DEVICES_PER_ONCE_SIZE)
                 iter_count = int(worker_own_jobs / fetching_size)
+                # TODO(pjongy): Fix divide by zero
                 # NOTE:
                 # If worker_own_jobs is smaller than DEVICE_PER_ONCE_SIZE,
                 # target devices overlap in each notification worker replica
@@ -145,14 +153,6 @@ class Replica:
             logger.exception(f'fatal error! {e}')
 
     async def job(self):  # real working job
-        mysql_config = config.notification_worker.mysql
-        await init_db(
-            host=mysql_config.host,
-            port=mysql_config.port,
-            user=mysql_config.user,
-            password=mysql_config.password,
-            db=mysql_config.database,
-        )
         self.redis_pool = await aioredis.create_pool(
             f'redis://{self.redis_host}:{self.redis_port}',
             password=self.redis_password,
