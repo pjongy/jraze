@@ -36,3 +36,18 @@ async def find_notification_events_by_external_id(
         await query_set.count(),
         await query_set.offset(start).limit(size).all()
     )
+
+
+async def add_device_notification_logs(
+    device_ids: List[int],
+    notification_id: int,
+) -> None:
+    return await DeviceNotificationLog.bulk_create(
+        [
+            DeviceNotificationLog(
+                device_id=device_id,
+                notification_id=notification_id,
+            )
+            for device_id in device_ids
+        ]
+    )
