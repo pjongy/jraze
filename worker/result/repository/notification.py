@@ -6,12 +6,14 @@ from common.util import utc_now
 
 async def increase_sent_count(
     uuid: str,
-    sent: int = None,
+    sent_ios: int = 0,
+    sent_android: int = 0,
 ) -> int:
     return await Notification.filter(
         uuid=uuid
     ).update(
-        sent=F('sent') + sent
+        sent_ios=F('sent_ios') + sent_ios,
+        sent_android=F('sent_android') + sent_android,
     )
 
 

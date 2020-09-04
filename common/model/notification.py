@@ -26,7 +26,8 @@ class Notification(Model, TimestampMixin):
     image_url = fields.TextField(null=True)
     icon_url = fields.TextField(null=True)
     deep_link = fields.TextField(null=True)
-    sent = fields.IntField(default=0)
+    sent_android = fields.IntField(default=0)
+    sent_ios = fields.IntField(default=0)
     scheduled_at = fields.DatetimeField()
     conditions = fields.JSONField(default={})
     status = typing.cast(

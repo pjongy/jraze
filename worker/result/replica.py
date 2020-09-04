@@ -9,6 +9,7 @@ from common.logger.logger import get_logger
 from common.model.notification import NotificationStatus
 from common.queue.result.push import blocking_get_push_result_job
 from common.storage.init import init_db
+from common.structure.enum import DevicePlatform
 from common.structure.job.result import ResultJob
 from worker.result.config import config
 from worker.result.repository.notification import increase_sent_count, change_notification_status
@@ -35,11 +36,22 @@ class Replica:
             job: ResultJob = deserialize.deserialize(
                 ResultJob, json.loads(job_json)
             )
-            affected_row = await increase_sent_count(
-                uuid=job.id,
-                sent=job.sent,
-            )
-            logger.info(f'increased sent: {job.sent} for {job.id} / affected_row: {affected_row}')
+            affected_row = 0
+            if job.device_platform == DevicePlatform.IOS:
+                affected_row = await increase_sent_count(
+                    uuid=job.id,
+                    sent_ios=job.sent,
+                )
+            elif job.device_platform == DevicePlatform.Android:
+                affected_row = await increase_sent_count(
+                    uuid=job.id,
+                    sent_android=job.sent,
+                )
+            else:
+                logger.warning(f'unknown device_platform: {job.device_platform}')
+
+            logger.info(f'increased sent({job.device_platform.name}): {job.sent} '
+                        f'for {job.id} / affected_row: {affected_row}')
             await change_notification_status(
                 uuid=job.id,
                 status=NotificationStatus.SENT,

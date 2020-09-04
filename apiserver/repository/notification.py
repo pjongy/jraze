@@ -14,7 +14,10 @@ def notification_model_to_dict(row: Notification):
         'uuid': row.uuid,
         'title': row.title,
         'body': row.body,
-        'sent': row.sent,
+        'sent': {
+            'android': row.sent_android,
+            'ios': row.sent_ios,
+        },
         'deep_link': row.deep_link,
         'image_url': row.image_url,
         'icon_url': row.icon_url,

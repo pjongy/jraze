@@ -3,6 +3,7 @@ from typing import List, Optional
 import deserialize
 import httpx
 
+from common.structure.enum import DevicePlatform, SendPlatform
 from worker.notification.config import config
 from common.logger.logger import get_logger
 from worker.notification.exception.external import ExternalException
@@ -16,8 +17,8 @@ class SearchDeviceResponse:
             id: int
             external_id: str
             push_token: str
-            send_platform: int
-            device_platform: int
+            send_platform: SendPlatform
+            device_platform: DevicePlatform
             created_at: str
             modified_at: Optional[str]
             device_properties: List[dict]

@@ -102,6 +102,7 @@ class Replica:
                         job={
                             'id': job.id,
                             'sent': sent,
+                            'device_platform': job.device_platform,
                             'failed': failed,
                         }
                     )

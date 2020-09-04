@@ -8,7 +8,7 @@
 
 #### Enums
 ```python
-# common/model/device.py
+# common/structure/enum.py
 class DevicePlatform(enum.IntEnum):
     UNKNOWN = 0
     ANDROID = 1

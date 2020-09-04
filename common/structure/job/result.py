@@ -2,6 +2,8 @@ from typing import Optional
 
 import deserialize
 
+from common.structure.enum import DevicePlatform
+
 
 @deserialize.default('id', None)
 @deserialize.default('sent', 0)
@@ -9,4 +11,5 @@ import deserialize
 class ResultJob:
     id: Optional[str]
     sent: int
+    device_platform: DevicePlatform
     failed: int
