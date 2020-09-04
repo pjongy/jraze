@@ -3,8 +3,8 @@ from typing import List
 from tortoise.query_utils import Q
 
 from apiserver.repository.notification import notification_model_to_dict
-from common.model.device import Device
-from common.model.device_notification_log import DeviceNotificationLog
+from apiserver.model.device import Device
+from apiserver.model.device_notification_log import DeviceNotificationLog
 
 
 def device_notification_log_model_to_dict(row: DeviceNotificationLog):

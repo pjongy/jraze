@@ -4,7 +4,7 @@ import typing
 from tortoise import fields
 from tortoise.models import Model
 
-from common.model.mixin import TimestampMixin
+from apiserver.model.mixin import TimestampMixin
 
 
 class NotificationStatus(enum.IntEnum):

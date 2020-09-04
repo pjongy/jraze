@@ -8,7 +8,7 @@ from apiserver.resource.devices import DevicesHttpResource
 from apiserver.resource.internal import InternalHttpResource
 from apiserver.resource.notifications import NotificationsHttpResource
 from common.logger.logger import get_logger
-from common.storage.init import init_db
+from apiserver.storage.init import init_db
 
 
 def plugin_app(app, prefix, nested, keys=()):

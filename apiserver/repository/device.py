@@ -5,8 +5,8 @@ import tortoise
 from tortoise import QuerySet
 from tortoise.query_utils import Q
 
-from common.model.device import Device, SendPlatform, DevicePlatform
-from common.model.device_property import DeviceProperty
+from apiserver.model.device import Device, SendPlatform, DevicePlatform
+from apiserver.model.device_property import DeviceProperty
 from common.structure.condition import ConditionClause
 from common.util import utc_now
 

@@ -14,7 +14,7 @@ from apiserver.repository.notification import find_notifications_by_status, \
     change_notification_status
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
-from common.model.notification import NotificationStatus
+from apiserver.model.notification import NotificationStatus
 from common.queue.notification import publish_notification_job, NotificationPriority
 from common.structure.condition import ConditionClause
 from common.structure.job.notification import NotificationJob

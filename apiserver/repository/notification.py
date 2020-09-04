@@ -5,7 +5,7 @@ from typing import List, Tuple
 from tortoise.expressions import F
 from tortoise.query_utils import Q
 
-from common.model.notification import Notification, NotificationStatus
+from apiserver.model.notification import Notification, NotificationStatus
 from common.util import utc_now
 
 

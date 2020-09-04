@@ -10,7 +10,7 @@ from apiserver.repository.notification import increase_sent_count, change_notifi
     find_notification_by_id
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
-from common.model.notification import NotificationStatus
+from apiserver.model.notification import NotificationStatus
 
 logger = get_logger(__name__)
 

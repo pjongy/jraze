@@ -10,7 +10,7 @@ from apiserver.repository.device_notification_log import find_notification_event
     device_notification_log_model_to_dict
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
-from common.model.device import DevicePlatform, SendPlatform
+from apiserver.model.device import DevicePlatform, SendPlatform
 from common.structure.condition import ConditionClause
 
 logger = get_logger(__name__)

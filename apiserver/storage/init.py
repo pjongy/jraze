@@ -10,9 +10,9 @@ async def init_db(host, port, user, password, db, generate=True):
             'apps': {
                 'models': {
                     'models': [
-                        'common.model.device',
-                        'common.model.notification',
-                        'common.model.device_notification_log'
+                        'apiserver.model.device',
+                        'apiserver.model.notification',
+                        'apiserver.model.device_notification_log'
                     ],
                     # If no default_connection specified, defaults to 'default'
                     'default_connection': 'default',

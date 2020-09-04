@@ -4,8 +4,8 @@ import typing
 from tortoise import fields
 from tortoise.models import Model
 
-from common.model.device_property import DeviceProperty
-from common.model.mixin import TimestampMixin
+from apiserver.model.device_property import DeviceProperty
+from apiserver.model.mixin import TimestampMixin
 
 
 class DevicePlatform(enum.IntEnum):
