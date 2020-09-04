@@ -1,5 +1,5 @@
 import asyncio
-import json
+import dataclasses
 import multiprocessing
 
 import aioredis
@@ -12,8 +12,10 @@ from common.queue.push.apns import publish_apns_job
 from common.queue.push.fcm import publish_fcm_job
 from common.structure.condition import ConditionClause
 from common.structure.enum import DevicePlatform, SendPlatform
+from common.structure.job.apns import APNsJob
+from common.structure.job.fcm import FCMJob
 from common.structure.job.notification import NotificationJob, Notification
-from common.util import object_to_dict, string_to_utc_datetime, utc_now
+from common.util import string_to_utc_datetime, utc_now
 from worker.notification.config import config
 from worker.notification.external.jraze.jraze import JrazeApi
 
@@ -44,7 +46,7 @@ class Replica:
         size: int
     ):
         search_device_result = await self.jraze_api.search_devices(
-            conditions=object_to_dict(conditions),
+            conditions=dataclasses.asdict(conditions),
             start=start,
             size=size,
         )
@@ -77,7 +79,7 @@ class Replica:
                     tasks.append(
                         self._publish_job_to_fcm(fcm_job={
                             'push_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform.value,
+                            'device_platform': device_platform,
                             'id': str(notification.uuid),
                             'body': notification.body,
                             'title': notification.title,
@@ -90,7 +92,7 @@ class Replica:
                     tasks.append(
                         self._publish_job_to_apns(apns_job={
                             'device_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform.value,
+                            'device_platform': device_platform,
                             'id': str(notification.uuid),
                             'body': notification.body,
                             'title': notification.title,
@@ -105,7 +107,7 @@ class Replica:
         with await self.redis_pool as redis_conn:
             pushed_job_count = await publish_fcm_job(
                 redis_conn=redis_conn,
-                job=fcm_job,
+                job=deserialize.deserialize(FCMJob, fcm_job)
             )
             return pushed_job_count
 
@@ -113,7 +115,7 @@ class Replica:
         with await self.redis_pool as redis_conn:
             pushed_job_count = await publish_apns_job(
                 redis_conn=redis_conn,
-                job=apns_job,
+                job=deserialize.deserialize(APNsJob, apns_job)
             )
             return pushed_job_count
 
@@ -164,26 +166,22 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                job_json = await blocking_get_notification_job(
+                job = await blocking_get_notification_job(
                     redis_conn=redis_conn,
                     timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 
-                if not job_json:
+                if not job:
                     continue
 
-                logger.debug(job_json)
-                job: NotificationJob = deserialize.deserialize(
-                    NotificationJob, json.loads(job_json)
-                )
-
+                logger.debug(job)
                 scheduled_at = string_to_utc_datetime(job.scheduled_at)
                 current_datetime = utc_now()
                 if scheduled_at > current_datetime:
                     await publish_notification_job(
                         redis_conn=redis_conn,
-                        job=object_to_dict(job),
+                        job=job,
                         priority=NotificationPriority.SCHEDULED,
                     )
                     logger.debug('scheduled notification (passed)')

@@ -1,9 +1,8 @@
 import asyncio
-import json
+import dataclasses
 import multiprocessing
 
 import aioredis
-import deserialize
 
 from common.logger.logger import get_logger
 from common.queue.result.push import blocking_get_push_result_job
@@ -30,12 +29,9 @@ class Replica:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.job())
 
-    async def process_job(self, job_json):  # real worker if job published
+    async def process_job(self, job: ResultJob):  # real worker if job published
         try:
-            logger.debug(job_json)
-            job: ResultJob = deserialize.deserialize(
-                ResultJob, json.loads(job_json)
-            )
+            logger.debug(job)
             if job.device_platform == DevicePlatform.IOS:
                 await self.jraze_api.increase_notification_sent(
                     notification_uuid=job.id,
@@ -51,7 +47,7 @@ class Replica:
 
             logger.info(f'increased sent({job.device_platform.name}): {job.sent} for {job.id}')
         except Exception:
-            logger.exception(f'Fatal Error! {job_json}')
+            logger.exception(f'Fatal Error! {dataclasses.asdict(job)}')
 
     async def job(self):  # real working job
         self.redis_pool = await aioredis.create_pool(
@@ -63,14 +59,14 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                job_json = await blocking_get_push_result_job(
+                job = await blocking_get_push_result_job(
                     redis_conn=redis_conn,
                     timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 
-                if not job_json:
+                if not job:
                     continue
 
                 logger.info('new task')
-                asyncio.create_task(self.process_job(job_json))
+                asyncio.create_task(self.process_job(job))

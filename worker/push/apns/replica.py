@@ -1,5 +1,5 @@
 import asyncio
-import json
+import dataclasses
 import multiprocessing
 from typing import List, Tuple
 from uuid import uuid4
@@ -12,6 +12,7 @@ from common.logger.logger import get_logger
 from common.queue.push.apns import blocking_get_apns_job
 from common.queue.result.push import publish_push_result_job
 from common.structure.job.apns import APNsJob
+from common.structure.job.result import ResultJob
 from worker.push.apns.config import config
 
 logger = get_logger(__name__)
@@ -73,12 +74,9 @@ class Replica:
 
         return success, failed
 
-    async def process_job(self, job_json):  # real worker if job published
+    async def process_job(self, job: APNsJob):  # real worker if job published
         try:
-            logger.debug(job_json)
-            job: APNsJob = deserialize.deserialize(
-                APNsJob, json.loads(job_json)
-            )
+            logger.debug(job)
             if not job.device_tokens:
                 return
 
@@ -96,18 +94,24 @@ class Replica:
             logger.info(f'sent: {sent}, failed: {failed}')
 
             if job.id:
-                with await self.redis_pool as redis_conn:
-                    await publish_push_result_job(
-                        redis_conn=redis_conn,
-                        job={
-                            'id': job.id,
-                            'sent': sent,
-                            'device_platform': job.device_platform,
-                            'failed': failed,
-                        }
-                    )
+                await self._publish_job_to_result_queue(
+                    result_job={
+                        'id': job.id,
+                        'sent': sent,
+                        'device_platform': job.device_platform,
+                        'failed': failed,
+                    }
+                )
         except Exception:
-            logger.exception(f'Fatal Error! {job_json}')
+            logger.exception(f'Fatal Error! {dataclasses.asdict(job)}')
+
+    async def _publish_job_to_result_queue(self, result_job: dict):
+        with await self.redis_pool as redis_conn:
+            pushed_job_count = await publish_push_result_job(
+                redis_conn=redis_conn,
+                job=deserialize.deserialize(ResultJob, result_job)
+            )
+            return pushed_job_count
 
     async def job(self):  # real working job
         self.redis_pool = await aioredis.create_pool(
@@ -119,14 +123,14 @@ class Replica:
         )
         while True:
             with await self.redis_pool as redis_conn:
-                job_json = await blocking_get_apns_job(
+                job = await blocking_get_apns_job(
                     redis_conn=redis_conn,
                     timeout=self.REDIS_TIMEOUT
                 )
                 logger.debug(multiprocessing.current_process())
 
-                if not job_json:
+                if not job:
                     continue
 
                 logger.info('new task')
-                asyncio.create_task(self.process_job(job_json))
+                asyncio.create_task(self.process_job(job=job))

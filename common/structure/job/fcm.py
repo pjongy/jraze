@@ -1,3 +1,4 @@
+import dataclasses
 from typing import List, Optional
 
 import deserialize
@@ -6,6 +7,7 @@ from common.structure.enum import DevicePlatform
 
 
 @deserialize.default('extra', {})
+@dataclasses.dataclass
 class FCMJob:
     id: str
     push_tokens: List[str]

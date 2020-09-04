@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import datetime
 import math
 from typing import List, Optional
@@ -18,7 +19,7 @@ from apiserver.model.notification import NotificationStatus
 from common.queue.notification import publish_notification_job, NotificationPriority
 from common.structure.condition import ConditionClause
 from common.structure.job.notification import NotificationJob
-from common.util import string_to_utc_datetime, object_to_dict, utc_now, datetime_to_utc_datetime
+from common.util import string_to_utc_datetime, utc_now, datetime_to_utc_datetime
 
 logger = get_logger(__name__)
 
@@ -104,7 +105,7 @@ class NotificationsHttpResource:
         )
 
         try:
-            conditions = object_to_dict(
+            conditions = dataclasses.asdict(
                 deserialize.deserialize(ConditionClause, request.conditions)
             )
         except deserialize.exceptions.DeserializeException as error:
@@ -171,7 +172,7 @@ class NotificationsHttpResource:
                                 'image_url': notification.image_url,
                                 'icon_url': notification.icon_url,
                                 'deep_link': notification.deep_link,
-                                'conditions': object_to_dict(conditions),
+                                'conditions': dataclasses.asdict(conditions),
                                 'devices': {
                                     'start': job_index * notification_job_capacity,
                                     'size': notification_job_capacity,
@@ -183,7 +184,7 @@ class NotificationsHttpResource:
                     tasks.append(
                         publish_notification_job(
                             redis_conn=redis_conn,
-                            job=object_to_dict(job),
+                            job=job,
                             priority=priority,
                         )
                     )

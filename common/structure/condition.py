@@ -1,6 +1,8 @@
+import dataclasses
 from typing import Optional, List
 
 
+@dataclasses.dataclass
 class ConditionClause:
     conditions: Optional[List['ConditionClause']]
     key: Optional[str]

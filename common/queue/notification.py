@@ -1,8 +1,13 @@
+import dataclasses
 import enum
+import json
+from typing import Optional
 
+import deserialize
 from aioredis import RedisConnection
 
 from common.queue import zadd, bzpopmin
+from common.structure.job.notification import NotificationJob
 
 
 class NotificationPriority(enum.IntEnum):
@@ -15,13 +20,13 @@ NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
 
 async def publish_notification_job(
     redis_conn: RedisConnection,
-    job: dict,
+    job: NotificationJob,
     priority: NotificationPriority = NotificationPriority.IMMEDIATE,
 ):
     return await zadd(
         redis_conn=redis_conn,
         topic=NOTIFICATION_JOB_QUEUE_TOPIC,
-        job=job,
+        job=dataclasses.asdict(job),
         z_index=int(priority)
     )
 
@@ -29,9 +34,14 @@ async def publish_notification_job(
 async def blocking_get_notification_job(
     redis_conn: RedisConnection,
     timeout: int = 0
-) -> str:
-    return await bzpopmin(
+) -> Optional[NotificationJob]:
+    job_json = await bzpopmin(
         redis_conn=redis_conn,
         topic=NOTIFICATION_JOB_QUEUE_TOPIC,
         timeout=timeout
     )
+    if not job_json:
+        return None
+
+    job = json.loads(job_json)
+    return deserialize.deserialize(NotificationJob, job)
