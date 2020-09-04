@@ -288,3 +288,24 @@ operators = {
           "reason": ...,
         }
         ```
+
+  - /notifications/{notification_uuid}/sent:increase *POST*
+    - purpose: Increase notification's sent amount by device_platform (result worker uses)
+    - request:
+        ```
+        {
+          "ios": ...int, # Increase amount for ios sent
+          "android": ...int, # Increase amount for android sent
+        }
+        ```
+    - response:
+        ```
+        {
+          "success": ...,
+          "result": {
+              "ios": ...int, # Increased value for ios sent
+              "android": ...int, # Increased value for android sent
+          }
+          "reason": ...,
+        }
+        ```
