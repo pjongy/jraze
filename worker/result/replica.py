@@ -6,13 +6,12 @@ import aioredis
 import deserialize
 
 from common.logger.logger import get_logger
-from common.model.notification import NotificationStatus
 from common.queue.result.push import blocking_get_push_result_job
-from common.storage.init import init_db
 from common.structure.enum import DevicePlatform
 from common.structure.job.result import ResultJob
 from worker.result.config import config
-from worker.result.repository.notification import increase_sent_count, change_notification_status
+
+from worker.result.external.jraze.jraze import JrazeApi
 
 logger = get_logger(__name__)
 
@@ -25,6 +24,7 @@ class Replica:
         self.redis_port = config.result_worker.redis.port
         self.redis_password = config.result_worker.redis.password
         self.redis_pool = None
+        self.jraze_api = JrazeApi()
 
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
@@ -36,38 +36,24 @@ class Replica:
             job: ResultJob = deserialize.deserialize(
                 ResultJob, json.loads(job_json)
             )
-            affected_row = 0
             if job.device_platform == DevicePlatform.IOS:
-                affected_row = await increase_sent_count(
-                    uuid=job.id,
-                    sent_ios=job.sent,
+                await self.jraze_api.increase_notification_sent(
+                    notification_uuid=job.id,
+                    ios=job.sent,
                 )
             elif job.device_platform == DevicePlatform.Android:
-                affected_row = await increase_sent_count(
-                    uuid=job.id,
-                    sent_android=job.sent,
+                await self.jraze_api.increase_notification_sent(
+                    notification_uuid=job.id,
+                    android=job.sent,
                 )
             else:
                 logger.warning(f'unknown device_platform: {job.device_platform}')
 
-            logger.info(f'increased sent({job.device_platform.name}): {job.sent} '
-                        f'for {job.id} / affected_row: {affected_row}')
-            await change_notification_status(
-                uuid=job.id,
-                status=NotificationStatus.SENT,
-            )
+            logger.info(f'increased sent({job.device_platform.name}): {job.sent} for {job.id}')
         except Exception:
             logger.exception(f'Fatal Error! {job_json}')
 
     async def job(self):  # real working job
-        mysql_config = config.result_worker.mysql
-        await init_db(
-            host=mysql_config.host,
-            port=mysql_config.port,
-            user=mysql_config.user,
-            password=mysql_config.password,
-            db=mysql_config.database,
-        )
         self.redis_pool = await aioredis.create_pool(
             f'redis://{self.redis_host}:{self.redis_port}',
             password=self.redis_password,

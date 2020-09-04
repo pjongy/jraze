@@ -2,6 +2,7 @@ import datetime
 import uuid
 from typing import List, Tuple
 
+from tortoise.expressions import F
 from tortoise.query_utils import Q
 
 from common.model.notification import Notification, NotificationStatus
@@ -102,3 +103,16 @@ async def change_notification_status(
     target_notification.modified_at = utc_now()
     await target_notification.save()
     return target_notification
+
+
+async def increase_sent_count(
+    uuid_: str,
+    sent_ios: int = 0,
+    sent_android: int = 0,
+) -> int:
+    return await Notification.filter(
+        uuid=uuid_
+    ).update(
+        sent_ios=F('sent_ios') + sent_ios,
+        sent_android=F('sent_android') + sent_android,
+    )

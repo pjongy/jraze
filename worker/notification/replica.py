@@ -12,8 +12,6 @@ from common.queue.push.apns import publish_apns_job
 from common.queue.push.fcm import publish_fcm_job
 from common.structure.condition import ConditionClause
 from common.structure.enum import DevicePlatform, SendPlatform
-from common.structure.job.apns import APNsJob
-from common.structure.job.fcm import FCMJob
 from common.structure.job.notification import NotificationJob, Notification
 from common.util import object_to_dict, string_to_utc_datetime, utc_now
 from worker.notification.config import config

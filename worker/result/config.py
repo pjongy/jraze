@@ -7,14 +7,6 @@ from common.configutil import get_config
 
 class Config:
     class ResultWorker:
-        @deserialize.default('port', '3306')
-        class MySQL:
-            host: str
-            port: str
-            user: str
-            password: str
-            database: str
-
         @deserialize.default('port', '6379')
         class Redis:
             class Database:
@@ -26,9 +18,15 @@ class Config:
 
             notification_queue: Database
 
-        mysql: MySQL
+        class External:
+            class Jraze:
+                base_url: str
+                x_server_key: str
+            jraze: Jraze
+
         pool_size: str
         redis: Redis
+        external: External
 
     result_worker: ResultWorker
 
