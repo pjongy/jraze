@@ -1,8 +1,5 @@
 {
   "notification_worker": {
-    "mysql": {
-      "database": "jraze"
-    },
     "pool_size": "5",
     "redis": {
       "host": "localhost",
