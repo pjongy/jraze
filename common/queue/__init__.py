@@ -2,6 +2,8 @@ import json
 
 from aioredis import RedisConnection
 
+from common.json_encoder import ManualJSONEncoder
+
 
 async def rpush(
     redis_conn: RedisConnection,
@@ -11,7 +13,7 @@ async def rpush(
     return await redis_conn.execute(
         'rpush',
         topic,
-        json.dumps(job),
+        json.dumps(job, cls=ManualJSONEncoder),
     )
 
 
@@ -40,7 +42,7 @@ async def zadd(
         'zadd',
         topic,
         z_index,
-        json.dumps(job),
+        json.dumps(job, cls=ManualJSONEncoder),
     )
 
 

@@ -176,9 +176,8 @@ class Replica:
                     continue
 
                 logger.debug(job)
-                scheduled_at = string_to_utc_datetime(job.scheduled_at)
                 current_datetime = utc_now()
-                if scheduled_at > current_datetime:
+                if job.scheduled_at > current_datetime:
                     await publish_notification_job(
                         redis_conn=redis_conn,
                         job=job,
