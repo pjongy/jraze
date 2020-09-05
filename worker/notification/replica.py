@@ -12,10 +12,10 @@ from common.queue.push.apns import publish_apns_job
 from common.queue.push.fcm import publish_fcm_job
 from common.structure.condition import ConditionClause
 from common.structure.enum import DevicePlatform, SendPlatform
-from common.structure.job.apns import APNsJob
-from common.structure.job.fcm import FCMJob
+from common.structure.job.apns import APNsJob, APNsTask
+from common.structure.job.fcm import FCMJob, FCMTask
 from common.structure.job.notification import NotificationJob, Notification
-from common.util import string_to_utc_datetime, utc_now
+from common.util import utc_now
 from worker.notification.config import config
 from worker.notification.external.jraze.jraze import JrazeApi
 
@@ -77,10 +77,10 @@ class Replica:
             for device_platform in device_platforms:
                 if send_platform == SendPlatform.FCM:
                     tasks.append(
-                        self._publish_job_to_fcm(fcm_job={
+                        self._publish_job_to_fcm(task_kwargs={
+                            'notification_id': str(notification.uuid),
                             'push_tokens': tokens[send_platform][device_platform],
                             'device_platform': device_platform,
-                            'id': str(notification.uuid),
                             'body': notification.body,
                             'title': notification.title,
                             'deep_link': notification.deep_link,
@@ -90,10 +90,10 @@ class Replica:
                     )
                 if send_platform == SendPlatform.APNS:
                     tasks.append(
-                        self._publish_job_to_apns(apns_job={
+                        self._publish_job_to_apns(task_kwargs={
+                            'notification_id': str(notification.uuid),
                             'device_tokens': tokens[send_platform][device_platform],
                             'device_platform': device_platform,
-                            'id': str(notification.uuid),
                             'body': notification.body,
                             'title': notification.title,
                             'deep_link': notification.deep_link,
@@ -103,19 +103,25 @@ class Replica:
                     )
         await asyncio.gather(*tasks)
 
-    async def _publish_job_to_fcm(self, fcm_job: dict):
+    async def _publish_job_to_fcm(self, task_kwargs: dict):
         with await self.redis_pool as redis_conn:
             pushed_job_count = await publish_fcm_job(
                 redis_conn=redis_conn,
-                job=deserialize.deserialize(FCMJob, fcm_job)
+                job=deserialize.deserialize(FCMJob, {
+                    'task': FCMTask.SEND_PUSH_MESSAGE,
+                    'kwargs': task_kwargs,
+                })
             )
             return pushed_job_count
 
-    async def _publish_job_to_apns(self, apns_job: dict):
+    async def _publish_job_to_apns(self, task_kwargs: dict):
         with await self.redis_pool as redis_conn:
             pushed_job_count = await publish_apns_job(
                 redis_conn=redis_conn,
-                job=deserialize.deserialize(APNsJob, apns_job)
+                job=deserialize.deserialize(APNsJob, {
+                    'task': APNsTask.SEND_PUSH_MESSAGE,
+                    'kwargs': task_kwargs,
+                })
             )
             return pushed_job_count
 

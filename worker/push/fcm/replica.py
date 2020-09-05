@@ -1,19 +1,21 @@
 import asyncio
 import dataclasses
 import multiprocessing
+from typing import Dict
 
 import aioredis
-import deserialize
 
 from common.logger.logger import get_logger
 from common.queue.push.fcm import blocking_get_fcm_job
 from common.queue.result.push import publish_push_result_job
-from common.structure.job.fcm import FCMJob
+from common.structure.job.fcm import FCMJob, FCMTask
 from common.structure.job.result import ResultJob
 from worker.push.fcm.config import config
 from worker.push.fcm.external.fcm.abstract import AbstractFCM
 from worker.push.fcm.external.fcm.legacy import FCMClientLegacy
 from worker.push.fcm.external.fcm.v1 import FCMClientV1
+from worker.push.fcm.task import AbstractTask
+from worker.push.fcm.task.send_push_message import SendPushMessageTask
 
 logger = get_logger(__name__)
 
@@ -22,11 +24,15 @@ class Replica:
     REDIS_TIMEOUT = 0  # Infinite
 
     def __init__(self, pid):
-        self.fcm: AbstractFCM = self.create_fcm_client()
         self.redis_host = config.push_worker.redis.host
         self.redis_port = config.push_worker.redis.port
         self.redis_password = config.push_worker.redis.password
         self.redis_pool = None
+
+        fcm: AbstractFCM = self.create_fcm_client()
+        self.tasks: Dict[FCMTask, AbstractTask] = {
+            FCMTask.SEND_PUSH_MESSAGE: SendPushMessageTask(fcm=fcm)
+        }
 
         logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
@@ -44,38 +50,27 @@ class Replica:
     async def process_job(self, job: FCMJob):  # real worker if job published
         try:
             logger.debug(job)
-            if not job.push_tokens:
+            try:
+                task = self.tasks[job.task]
+            except KeyError as e:
+                logger.warning(f'unknown task({job.task.name}): {e}')
                 return
 
-            sent, failed = await self.fcm.send_data(
-                targets=job.push_tokens,
-                data={
-                    'notification': {
-                        'title': job.title,
-                        'body': job.body,
-                        'image': job.image_url,
-                    }
-                }
-            )
-            logger.info(f'sent: {sent}, failed: {failed}')
+            result_job = await task.run(kwargs=job.kwargs)
+            if not result_job:
+                return
 
-            if job.id:
-                await self._publish_job_to_result_queue(
-                    result_job={
-                        'id': job.id,
-                        'sent': sent,
-                        'device_platform': job.device_platform,
-                        'failed': failed,
-                    }
-                )
+            await self._publish_job_to_result_queue(
+                result_job=result_job
+            )
         except Exception:
             logger.exception(f'Fatal Error! {dataclasses.asdict(job)}')
 
-    async def _publish_job_to_result_queue(self, result_job: dict):
+    async def _publish_job_to_result_queue(self, result_job: ResultJob):
         with await self.redis_pool as redis_conn:
             pushed_job_count = await publish_push_result_job(
                 redis_conn=redis_conn,
-                job=deserialize.deserialize(ResultJob, result_job)
+                job=result_job
             )
             return pushed_job_count
 
