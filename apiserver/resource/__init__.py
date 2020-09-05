@@ -1,25 +1,13 @@
 import json
-import datetime
-import uuid
 
 import deserialize
 from aiohttp import web
 
 from apiserver.exception.request import IncompleteParameterError, TypeConvertError
+from common.json_encoder import ManualJSONEncoder
 from common.logger.logger import get_logger
-from common.util import datetime_to_kst_datetime, datetime_to_utc_datetime
 
 logger = get_logger(__name__)
-
-
-class ManualJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime.datetime):
-            r = datetime_to_kst_datetime(datetime_to_utc_datetime(o)).isoformat()
-            return r
-        if isinstance(o, uuid.UUID):
-            return str(o)
-        return super().default(o)
 
 
 def json_response(

@@ -10,11 +10,6 @@ KST = datetime.timezone(datetime.timedelta(hours=9), 'KST')
 UTC = datetime.timezone(datetime.timedelta(hours=0), 'UTC')
 
 
-def json_encoder(o):
-    if isinstance(o, (datetime.date, datetime.datetime)):
-        return o.isoformat()
-
-
 def to_string(string):
     if isinstance(string, bytes):
         return string.decode()
