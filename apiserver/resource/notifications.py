@@ -16,10 +16,10 @@ from apiserver.repository.notification import find_notifications_by_status, \
 from apiserver.resource import json_response, convert_request
 from common.logger.logger import get_logger
 from apiserver.model.notification import NotificationStatus
-from common.queue.notification import publish_notification_job, NotificationPriority
+from common.queue.notification import publish_notification_job
 from common.structure.condition import ConditionClause
-from common.structure.job.notification import NotificationJob
-from common.util import string_to_utc_datetime, utc_now, datetime_to_utc_datetime
+from common.structure.job.notification import NotificationJob, NotificationTask
+from common.util import string_to_utc_datetime, utc_now
 
 logger = get_logger(__name__)
 
@@ -154,38 +154,32 @@ class NotificationsHttpResource:
         try:
             tasks = []
             with await self.redis_pool as redis_conn:
-                current_datetime = utc_now()
-                scheduled_at_utc = datetime_to_utc_datetime(notification.scheduled_at)
-
-                priority = NotificationPriority.IMMEDIATE
-                if scheduled_at_utc > current_datetime:
-                    priority = NotificationPriority.SCHEDULED
-
                 for job_index in range(self.NOTIFICATION_WORKER_COUNT):
                     job: NotificationJob = deserialize.deserialize(
                         NotificationJob, {
-                            'notification': {
-                                'id': notification.id,
-                                'uuid': str(notification.uuid),
-                                'title': notification.title,
-                                'body': notification.body,
-                                'image_url': notification.image_url,
-                                'icon_url': notification.icon_url,
-                                'deep_link': notification.deep_link,
+                            'task': NotificationTask.LAUNCH_NOTIFICATION,
+                            'kwargs': {
+                                'notification': {
+                                    'id': notification.id,
+                                    'uuid': str(notification.uuid),
+                                    'title': notification.title,
+                                    'body': notification.body,
+                                    'image_url': notification.image_url,
+                                    'icon_url': notification.icon_url,
+                                    'deep_link': notification.deep_link,
+                                },
                                 'conditions': dataclasses.asdict(conditions),
-                                'devices': {
+                                'device_range': {
                                     'start': job_index * notification_job_capacity,
                                     'size': notification_job_capacity,
-                                }
+                                },
                             },
-                            'scheduled_at': scheduled_at_utc.isoformat()
                         }
                     )
                     tasks.append(
                         publish_notification_job(
                             redis_conn=redis_conn,
                             job=job,
-                            priority=priority,
                         )
                     )
                 await asyncio.gather(*tasks)
