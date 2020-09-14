@@ -267,6 +267,16 @@ operators = {
     - request: `Empty`
     - response: `Same as /notifications/{notification_id} GET response`
 
+  - /-/launched *GET*
+    - purpose: Fetch launched notifications
+    - query_string:
+        ```
+        size=...size for response array...
+        start=...start...
+        ```
+    - request: `Empty`
+    - response: `Same as / GET response`
+
 
 ### Internal API
 

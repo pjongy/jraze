@@ -51,6 +51,22 @@ async def find_notifications_by_status(
     )
 
 
+async def find_launched_notification(
+    current_datetime: datetime.datetime,
+    start: int = 0,
+    size: int = 10,
+) -> Tuple[int, List[Notification]]:
+    notification_filter = Q(
+        status=NotificationStatus.LAUNCHED,
+        scheduled_at__lte=current_datetime,
+    )
+    query_set = Notification.filter(notification_filter).order_by('scheduled_at')
+    return (
+        await query_set.count(),
+        await query_set.offset(start).limit(size).all()
+    )
+
+
 async def find_notification_by_id(uuid: str) -> Notification:
     return await Notification.filter(
         uuid=uuid
