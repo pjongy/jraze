@@ -1,23 +1,17 @@
 import asyncio
 import dataclasses
 import multiprocessing
+from typing import Dict
 
 import aioredis
-import deserialize
 
 from common.logger.logger import get_logger
-from common.queue.notification import blocking_get_notification_job, publish_notification_job, \
-    NotificationPriority
-from common.queue.push.apns import publish_apns_job
-from common.queue.push.fcm import publish_fcm_job
-from common.structure.condition import ConditionClause
-from common.structure.enum import DevicePlatform, SendPlatform
-from common.structure.job.apns import APNsJob, APNsTask
-from common.structure.job.fcm import FCMJob, FCMTask
-from common.structure.job.notification import NotificationJob, Notification
-from common.util import utc_now
+from common.queue.notification import blocking_get_notification_job
+from common.structure.job.notification import NotificationJob, NotificationTask
 from worker.notification.config import config
 from worker.notification.external.jraze.jraze import JrazeApi
+from worker.notification.task import AbstractTask
+from worker.notification.task.launch_notification import LaunchNotificationTask
 
 logger = get_logger(__name__)
 
@@ -28,148 +22,46 @@ class Replica:
     TOTAL_WORKERS = int(config.notification_worker.pool_size)
 
     def __init__(self, pid):
-        self.redis_host = config.notification_worker.redis.host
-        self.redis_port = config.notification_worker.redis.port
-        self.redis_password = config.notification_worker.redis.password
-        self.redis_pool = None
-        self.jraze_api = JrazeApi()
-
-        logger.debug(f'Worker {pid} up')
         loop = asyncio.get_event_loop()
+
+        redis_host = config.notification_worker.redis.host
+        redis_port = config.notification_worker.redis.port
+        redis_password = config.notification_worker.redis.password
+        self.redis_pool = loop.run_until_complete(
+            aioredis.create_pool(
+                f'redis://{redis_host}:{redis_port}',
+                password=redis_password,
+                db=int(config.notification_worker.redis.notification_queue.database),
+                minsize=5,
+                maxsize=10,
+            )
+        )
+
+        self.jraze_api = JrazeApi()
+        self.tasks: Dict[NotificationTask, AbstractTask] = {
+            NotificationTask.LAUNCH_NOTIFICATION: LaunchNotificationTask(
+                jraze_api=self.jraze_api,
+                redis_pool=self.redis_pool,
+            )
+        }
         loop.run_until_complete(self.job())
 
-    async def _send_notification_by_conditions(
-        self,
-        notification: Notification,
-        conditions: ConditionClause,
-        start: int,
-        size: int
-    ):
-        search_device_result = await self.jraze_api.search_devices(
-            conditions=dataclasses.asdict(conditions),
-            start=start,
-            size=size,
-        )
-        device_platforms = {DevicePlatform.IOS, DevicePlatform.Android}
-        send_platforms = {SendPlatform.APNS, SendPlatform.FCM}
-
-        tokens = {}
-        for send_platform in send_platforms:
-            if send_platform not in tokens:
-                tokens[send_platform] = {}
-            for device_platform in device_platforms:
-                if device_platform not in tokens[send_platform]:
-                    tokens[send_platform][device_platform] = []
-
-        device_ids = []
-        for device in search_device_result.result.devices:
-            tokens[device.send_platform][device.device_platform].append(device.push_token)
-            device_ids.append(device.id)
-
-        tasks = [
-            self.jraze_api.log_notification(
-                device_ids=device_ids,
-                notification_id=notification.id,
-            ),
-        ]
-
-        for send_platform in send_platforms:
-            for device_platform in device_platforms:
-                if send_platform == SendPlatform.FCM:
-                    tasks.append(
-                        self._publish_job_to_fcm(task_kwargs={
-                            'notification_id': str(notification.uuid),
-                            'push_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform,
-                            'body': notification.body,
-                            'title': notification.title,
-                            'deep_link': notification.deep_link,
-                            'image_url': notification.image_url,
-                            'icon_url': notification.icon_url
-                        })
-                    )
-                if send_platform == SendPlatform.APNS:
-                    tasks.append(
-                        self._publish_job_to_apns(task_kwargs={
-                            'notification_id': str(notification.uuid),
-                            'device_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform,
-                            'body': notification.body,
-                            'title': notification.title,
-                            'deep_link': notification.deep_link,
-                            'image_url': notification.image_url,
-                            'icon_url': notification.icon_url
-                        })
-                    )
-        await asyncio.gather(*tasks)
-
-    async def _publish_job_to_fcm(self, task_kwargs: dict):
-        with await self.redis_pool as redis_conn:
-            pushed_job_count = await publish_fcm_job(
-                redis_conn=redis_conn,
-                job=deserialize.deserialize(FCMJob, {
-                    'task': FCMTask.SEND_PUSH_MESSAGE,
-                    'kwargs': task_kwargs,
-                })
-            )
-            return pushed_job_count
-
-    async def _publish_job_to_apns(self, task_kwargs: dict):
-        with await self.redis_pool as redis_conn:
-            pushed_job_count = await publish_apns_job(
-                redis_conn=redis_conn,
-                job=deserialize.deserialize(APNsJob, {
-                    'task': APNsTask.SEND_PUSH_MESSAGE,
-                    'kwargs': task_kwargs,
-                })
-            )
-            return pushed_job_count
+        logger.debug(f'Worker {pid} up')
 
     async def process_job(self, job: NotificationJob):  # real worker if job published
         try:
-            if job.notification is not None:
-                notification: Notification = job.notification
-                worker_own_jobs = job.notification.devices.size
-                start_position = job.notification.devices.start
+            logger.debug(job)
+            try:
+                task = self.tasks[job.task]
+            except KeyError as e:
+                logger.warning(f'unknown task({job.task.name}): {e}')
+                return
 
-                fetching_size = min(worker_own_jobs, self.DEVICES_PER_ONCE_SIZE)
-                iter_count = int(worker_own_jobs / fetching_size)
-                # TODO(pjongy): Fix divide by zero
-                # NOTE:
-                # If worker_own_jobs is smaller than DEVICE_PER_ONCE_SIZE,
-                # target devices overlap in each notification worker replica
-
-                fetching_ranges = [
-                    (start_position + iteration * fetching_size, fetching_size)
-                    for iteration in range(iter_count)
-                ]
-                if worker_own_jobs % fetching_size > 0:
-                    fetching_ranges.append((
-                        start_position + iter_count * fetching_size,
-                        worker_own_jobs % fetching_size
-                    ))
-                # NOTE: Split cases for covering 'worker_own_jobs % fetching_size != 0'
-                tasks = [
-                    self._send_notification_by_conditions(
-                        notification=notification,
-                        conditions=job.notification.conditions,
-                        start=start,
-                        size=size,
-                    )
-                    for start, size in fetching_ranges
-                ]
-                await asyncio.gather(*tasks)
-        except BaseException as e:
-            logger.exception(f'fatal error! {e}')
+            await task.run(kwargs=job.kwargs)
+        except Exception:
+            logger.exception(f'Fatal Error! {dataclasses.asdict(job)}')
 
     async def job(self):  # real working job
-        self.redis_pool = await aioredis.create_pool(
-            f'redis://{self.redis_host}:{self.redis_port}',
-            password=self.redis_password,
-            db=int(config.notification_worker.redis.notification_queue.database),
-            minsize=5,
-            maxsize=10,
-        )
         while True:
             with await self.redis_pool as redis_conn:
                 job = await blocking_get_notification_job(
@@ -179,18 +71,6 @@ class Replica:
                 logger.debug(multiprocessing.current_process())
 
                 if not job:
-                    continue
-
-                logger.debug(job)
-                current_datetime = utc_now()
-                if job.scheduled_at > current_datetime:
-                    await publish_notification_job(
-                        redis_conn=redis_conn,
-                        job=job,
-                        priority=NotificationPriority.SCHEDULED,
-                    )
-                    logger.debug('scheduled notification (passed)')
-                    await asyncio.sleep(1)
                     continue
 
                 logger.info('new task')

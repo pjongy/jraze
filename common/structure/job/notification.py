@@ -1,15 +1,20 @@
 import dataclasses
-import datetime
-from typing import List, Optional
-
-import deserialize
+import enum
+from typing import Optional
 
 from common.structure.condition import ConditionClause
-from common.util import string_to_utc_datetime
 
 
 @dataclasses.dataclass
-class Push:
+class Range:
+    start: int
+    size: int
+
+
+@dataclasses.dataclass
+class Notification:
+    id: int
+    uuid: str
     title: str
     body: str
     image_url: Optional[str]
@@ -18,26 +23,17 @@ class Push:
 
 
 @dataclasses.dataclass
-class Notification(Push):
-    @dataclasses.dataclass
-    class Devices:
-        start: int
-        size: int
-    id: int
-    uuid: str
+class NotificationLaunchMessageArgs:
+    notification: Notification
     conditions: Optional[ConditionClause]
-    devices: Devices
+    device_range: Range
 
 
-@dataclasses.dataclass
-class Unrecorded(Push):
-    external_ids: Optional[List[str]]
-    conditions: Optional[List[ConditionClause]]
+class NotificationTask(enum.IntEnum):
+    LAUNCH_NOTIFICATION = 1
 
 
-@deserialize.parser('scheduled_at', string_to_utc_datetime)
 @dataclasses.dataclass
 class NotificationJob:
-    notification: Optional[Notification]
-    unrecorded: Optional[Unrecorded]
-    scheduled_at: datetime.datetime
+    task: NotificationTask
+    kwargs: dict  # NOTE(pjongy): JSON data for task args e.g) NotificationLaunchMessageArgs
