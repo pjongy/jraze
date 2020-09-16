@@ -112,3 +112,20 @@ services:
     depends_on:
       - mysql
       - redis-mq
+  notification-batch:
+    build:
+      context: .
+      dockerfile: batch/notification/Dockerfile
+    environment:
+      ENV: dev
+      NOTIFICATION_BATCH__REDIS__PASSWORD: redis_password
+      NOTIFICATION_BATCH__REDIS__HOST: 172.12.1.3
+      NOTIFICATION_BATCH__EXTERNAL__JRAZE__BASE_URL: http://172.12.1.4:8080/
+      NOTIFICATION_BATCH__EXTERNAL__JRAZE__X_SERVER_KEY: internal_key_1
+    networks:
+      local_net:
+        ipv4_address: 172.12.1.8
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis-mq
