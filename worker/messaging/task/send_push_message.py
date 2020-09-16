@@ -2,9 +2,10 @@ import deserialize
 from aioredis import ConnectionsPool
 
 from common.logger.logger import get_logger
-from common.queue.result.push import publish_push_result_job
+from common.queue.notification import publish_notification_job
+from common.structure.enum import DevicePlatform
 from common.structure.job.messaging import SendPushMessageArgs, SendPlatform
-from common.structure.job.result import ResultJob
+from common.structure.job.notification import NotificationJob, NotificationTask
 from worker.messaging.external.apns.abstract import AbstractAPNs
 from worker.messaging.external.fcm.abstract import AbstractFCM
 from worker.messaging.task import AbstractTask
@@ -35,13 +36,11 @@ class SendPushMessageTask(AbstractTask):
                 }
             )
             logger.info(f'sent: {sent}, failed: {failed}')
-            await self._publish_job_to_result_queue(
-                result_job=deserialize.deserialize(ResultJob, {
-                    'id': task_args.notification_id,
-                    'sent': sent,
-                    'device_platform': task_args.device_platform,
-                    'failed': failed,
-                })
+            await self._update_notification_result(
+                notification_uuid=task_args.notification_id,
+                sent=sent,
+                failed=failed,
+                device_platform=task_args.device_platform,
             )
         elif task_args.send_platform == SendPlatform.APNS:
             sent, failed = await self.apns.send_data(
@@ -56,22 +55,34 @@ class SendPushMessageTask(AbstractTask):
                 }
             )
             logger.info(f'sent: {sent}, failed: {failed}')
-            await self._publish_job_to_result_queue(
-                result_job=deserialize.deserialize(ResultJob, {
-                    'id': task_args.notification_id,
-                    'sent': sent,
-                    'device_platform': task_args.device_platform,
-                    'failed': failed,
-                })
+            await self._update_notification_result(
+                notification_uuid=task_args.notification_id,
+                sent=sent,
+                failed=failed,
+                device_platform=task_args.device_platform,
             )
         else:
             raise NotImplementedError(
                 f'Can not handle SendPlatform type {task_args.send_platform.name}')
 
-    async def _publish_job_to_result_queue(self, result_job: ResultJob):
+    async def _update_notification_result(
+        self,
+        notification_uuid: str,
+        sent: int,
+        failed: int,
+        device_platform: DevicePlatform,
+    ):
         with await self.redis_pool as redis_conn:
-            pushed_job_count = await publish_push_result_job(
+            pushed_job_count = await publish_notification_job(
                 redis_conn=redis_conn,
-                job=result_job
+                job=deserialize.deserialize(NotificationJob, {
+                    'task': NotificationTask.UPDATE_RESULT,
+                    'kwargs': {
+                        'device_platform': device_platform,
+                        'notification_uuid': notification_uuid,
+                        'sent': sent,
+                        'failed': failed,
+                    }
+                })
             )
             return pushed_job_count

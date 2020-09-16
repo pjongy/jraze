@@ -3,6 +3,7 @@ import enum
 from typing import Optional
 
 from common.structure.condition import ConditionClause
+from common.structure.enum import DevicePlatform
 
 
 @dataclasses.dataclass
@@ -29,8 +30,17 @@ class NotificationLaunchMessageArgs:
     device_range: Range
 
 
+@dataclasses.dataclass
+class NotificationSentResultMessageArgs:
+    device_platform: DevicePlatform
+    notification_uuid: str
+    sent: int
+    failed: int
+
+
 class NotificationTask(enum.IntEnum):
     LAUNCH_NOTIFICATION = 1
+    UPDATE_RESULT = 2
 
 
 @dataclasses.dataclass
