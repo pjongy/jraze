@@ -51,10 +51,7 @@ $ docker-compose -f local-docker-compose.yml up -d
 /
   /apiserver
   /worker
-    /push
-      /apns
-      /fcm
-    /result
+    /messaging
     /notification
 ```
 
@@ -68,19 +65,18 @@ $ docker-compose -f local-docker-compose.yml up -d
 - Notification worker
   ---
   - Find devices comfort notification's condition and publish job for 'Push worker'
+  - Client for update notifications' sent result
 
-- Push worker
+- Messaging worker (Push worker)
   ---
   - Client for send push message to each send platform like: FCM, APNs
   - Publish job for 'Result worker' to update notification sent result (success / failed)
 
-- Result worker
-  ---
-  - Client for update notifications' sent result
 
 ### Sequence
 ```
-[API server] -> [Notification worker] -> [Push worker] -> [Result worker]
+[API server] -> [Notification worker] -> [Push worker]
+                        ^---------------------|
 ```
 
 ## Trouble shooting

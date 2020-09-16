@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-
-from common.structure.job.result import ResultJob
 
 
 class AbstractTask(ABC):
@@ -9,5 +6,5 @@ class AbstractTask(ABC):
     async def run(
         self,
         kwargs: dict
-    ) -> Optional[ResultJob]:
+    ):
         raise NotImplementedError('inherit class and implement method')

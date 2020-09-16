@@ -12,6 +12,7 @@ from worker.notification.config import config
 from worker.notification.external.jraze.jraze import JrazeApi
 from worker.notification.task import AbstractTask
 from worker.notification.task.launch_notification import LaunchNotificationTask
+from worker.notification.task.update_push_result import UpdatePushResultTask
 
 logger = get_logger(__name__)
 
@@ -42,7 +43,10 @@ class Replica:
             NotificationTask.LAUNCH_NOTIFICATION: LaunchNotificationTask(
                 jraze_api=self.jraze_api,
                 redis_pool=self.redis_pool,
-            )
+            ),
+            NotificationTask.UPDATE_RESULT: UpdatePushResultTask(
+                jraze_api=self.jraze_api,
+            ),
         }
         loop.run_until_complete(self.job())
 
