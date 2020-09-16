@@ -44,7 +44,7 @@ class SendPushMessageTask(AbstractTask):
             )
         elif task_args.send_platform == SendPlatform.APNS:
             sent, failed = await self.apns.send_data(
-                targets=task_args.device_tokens,
+                targets=task_args.push_tokens,
                 data={
                     'aps': {
                         'alert': {
