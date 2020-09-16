@@ -7,7 +7,21 @@ from common.configutil import get_config
 
 class Config:
     @deserialize.parser('pool_size', int)
-    class FCMPushWorker:
+    class MessagingWorker:
+        class APNs:
+            class PEMCert:
+                file_name: str
+
+            class P8Cert:
+                file_name: str
+                key_id: str
+                team_id: str
+                topic: str  # Bundle id
+
+            pem_cert: PEMCert
+            p8_cert: P8Cert
+            cert_type: str
+
         class FCM:
             class V1:
                 project_id: str
@@ -35,10 +49,11 @@ class Config:
             notification_queue: Database
 
         fcm: FCM
+        apns: APNs
         pool_size: int
         redis: Redis
 
-    push_worker: FCMPushWorker
+    push_worker: MessagingWorker
 
 
 config_path = f'{Path(__file__).resolve().parent}/config'

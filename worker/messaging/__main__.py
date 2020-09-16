@@ -1,7 +1,7 @@
 from multiprocessing import Pool
 
-from worker.push.apns.config import config
-from worker.push.apns.replica import Replica
+from worker.messaging.config import config
+from worker.messaging.replica import Replica
 
 if __name__ == '__main__':
     size = int(config.push_worker.pool_size)

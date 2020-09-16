@@ -1,0 +1,27 @@
+{
+  "push_worker": {
+    "apns": {
+      "pem_cert": {
+        "file_name": "test"
+      },
+      "p8_cert": {
+        "file_name": "test",
+        "key_id": "test",
+        "team_id": "test",
+        "topic": "test"
+      },
+      "cert_type": "pem"
+    },
+    "fcm": {
+      "legacy": {
+        "server_key": "test"
+      },
+      "v1": {
+        "project_id": "test"
+      }
+    },
+    "redis": {
+      "host": "localhost"
+    }
+  }
+}
