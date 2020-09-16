@@ -4,15 +4,16 @@ from typing import List, Optional
 
 import deserialize
 
-from common.structure.enum import DevicePlatform
+from common.structure.enum import DevicePlatform, SendPlatform
 
 
 @deserialize.default('extra', {})
 @dataclasses.dataclass
-class APNsSendPushMessageArgs:
-    notification_id: str
-    device_tokens: List[str]
+class SendPushMessageArgs:
+    send_platform: SendPlatform
     device_platform: DevicePlatform
+    notification_id: str
+    push_tokens: List[str]
     title: str
     body: str
     image_url: Optional[str]
@@ -21,11 +22,11 @@ class APNsSendPushMessageArgs:
     extra: dict
 
 
-class APNsTask(enum.IntEnum):
+class MessagingTask(enum.IntEnum):
     SEND_PUSH_MESSAGE = 1
 
 
 @dataclasses.dataclass
-class APNsJob:
-    task: APNsTask
-    kwargs: dict  # NOTE(pjongy): JSON data for task args e.g) APNsSendPushMessageArgs
+class MessagingJob:
+    task: MessagingTask
+    kwargs: dict  # NOTE(pjongy): JSON data for task args e.g) FCMSendPushMessageArgs

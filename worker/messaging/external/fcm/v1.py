@@ -8,7 +8,7 @@ from google.oauth2.service_account import Credentials
 from httpx import Response
 
 from common.logger.logger import get_logger
-from worker.push.fcm.external.fcm.abstract import AbstractFCM
+from worker.messaging.external.fcm.abstract import AbstractFCM
 
 logger = get_logger(__name__)
 

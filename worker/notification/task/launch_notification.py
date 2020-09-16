@@ -5,11 +5,9 @@ import deserialize
 from aioredis import ConnectionsPool
 
 from common.logger.logger import get_logger
-from common.queue.push.apns import publish_apns_job
-from common.queue.push.fcm import publish_fcm_job
+from common.queue.messaging import publish_messaging_job
 from common.structure.enum import DevicePlatform, SendPlatform
-from common.structure.job.apns import APNsTask, APNsJob
-from common.structure.job.fcm import FCMJob, FCMTask
+from common.structure.job.messaging import MessagingJob, MessagingTask
 from common.structure.job.notification import NotificationLaunchMessageArgs, Notification
 from worker.notification.external.jraze.jraze import JrazeApi
 from worker.notification.task import AbstractTask
@@ -22,23 +20,12 @@ class LaunchNotificationTask(AbstractTask):
         self.jraze_api: JrazeApi = jraze_api
         self.redis_pool: ConnectionsPool = redis_pool
 
-    async def _publish_job_to_fcm(self, task_kwargs: dict):
+    async def _publish_messaging_worker_job(self, task_kwargs: dict):
         with await self.redis_pool as redis_conn:
-            pushed_job_count = await publish_fcm_job(
+            pushed_job_count = await publish_messaging_job(
                 redis_conn=redis_conn,
-                job=deserialize.deserialize(FCMJob, {
-                    'task': FCMTask.SEND_PUSH_MESSAGE,
-                    'kwargs': task_kwargs,
-                })
-            )
-            return pushed_job_count
-
-    async def _publish_job_to_apns(self, task_kwargs: dict):
-        with await self.redis_pool as redis_conn:
-            pushed_job_count = await publish_apns_job(
-                redis_conn=redis_conn,
-                job=deserialize.deserialize(APNsJob, {
-                    'task': APNsTask.SEND_PUSH_MESSAGE,
+                job=deserialize.deserialize(MessagingJob, {
+                    'task': MessagingTask.SEND_PUSH_MESSAGE,
                     'kwargs': task_kwargs,
                 })
             )
@@ -80,30 +67,17 @@ class LaunchNotificationTask(AbstractTask):
 
         for send_platform in send_platforms:
             for device_platform in device_platforms:
-                if send_platform == SendPlatform.FCM:
-                    tasks.append(
-                        self._publish_job_to_fcm(task_kwargs={
-                            'notification_id': str(notification.uuid),
-                            'push_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform,
-                            'body': notification.body,
-                            'title': notification.title,
-                            'deep_link': notification.deep_link,
-                            'image_url': notification.image_url,
-                            'icon_url': notification.icon_url
-                        })
-                    )
-                if send_platform == SendPlatform.APNS:
-                    tasks.append(
-                        self._publish_job_to_apns(task_kwargs={
-                            'notification_id': str(notification.uuid),
-                            'device_tokens': tokens[send_platform][device_platform],
-                            'device_platform': device_platform,
-                            'body': notification.body,
-                            'title': notification.title,
-                            'deep_link': notification.deep_link,
-                            'image_url': notification.image_url,
-                            'icon_url': notification.icon_url
-                        })
-                    )
+                tasks.append(
+                    self._publish_messaging_worker_job(task_kwargs={
+                        'send_platform': send_platform,
+                        'notification_id': str(notification.uuid),
+                        'push_tokens': tokens[send_platform][device_platform],
+                        'device_platform': device_platform,
+                        'body': notification.body,
+                        'title': notification.title,
+                        'deep_link': notification.deep_link,
+                        'image_url': notification.image_url,
+                        'icon_url': notification.icon_url
+                    })
+                )
         await asyncio.gather(*tasks)
