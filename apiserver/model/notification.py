@@ -13,6 +13,7 @@ class NotificationStatus(enum.IntEnum):
     SENT = 2
     ERROR = 3
     DELETED = 4
+    QUEUED = 5
 
 
 class Notification(Model, TimestampMixin):
