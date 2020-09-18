@@ -60,7 +60,12 @@ $ docker-compose -f local-docker-compose.yml up -d
   - Endpoint for client can attach through REST API
   - Take roles about register device/notification
   - Also it shows device's event for notification
-  - Publish job for 'Notification worker'
+  - Publish job for 'Notification worker' if not scheduled notification
+  - Change just status of notification if scheduled notification (It will published by 'Notification batch')
+
+- Notification batch
+  ---
+  - Periodically check launched notification existence and publish "launched scheduled notification" for 'Notification worker'
 
 - Notification worker
   ---
@@ -70,13 +75,15 @@ $ docker-compose -f local-docker-compose.yml up -d
 - Messaging worker (Push worker)
   ---
   - Client for send push message to each send platform like: FCM, APNs
-  - Publish job for 'Result worker' to update notification sent result (success / failed)
+  - Publish job back for 'Notification worker' to update notification sent result (success / failed)
 
 
 ### Sequence
 ```
-[API server] -> [Notification worker] -> [Push worker]
-                        ^---------------------|
+[API server] ->  [Notification worker] -> [Push worker]
+                        ^____________________|
+     ^                  |________
+     |____[Notification batch]__|
 ```
 
 ## Trouble shooting
