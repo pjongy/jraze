@@ -21,6 +21,15 @@ class Config:
             password: str
             database: str
 
+        @deserialize.default('port', 27017)
+        @deserialize.parser('port', int)
+        class Mongo:
+            host: str
+            port: int
+            user: str
+            password: str
+            database: str
+
         @deserialize.default('port', 6379)
         @deserialize.parser('port', int)
         class Redis:
@@ -38,6 +47,7 @@ class Config:
             worker_count: int
 
         mysql: MySQL
+        mongo: Mongo
         redis: Redis
         port: int
         notification_worker: Worker

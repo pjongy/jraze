@@ -3,6 +3,9 @@
     "mysql": {
       "database": "jraze"
     },
+    "mongo": {
+      "database": "jraze"
+    },
     "redis": {
       "notification_queue": {
         "database": 0
