@@ -247,6 +247,16 @@ operators = {
     - request: `Empty`
     - response: `Same as /notifications/{notification_id} GET response`
 
+  - /{notification_id}/status *PUT*
+    - purpose: Update notification status
+    - request:
+        ```
+        {
+            "status": ...status to update...[NotificationStatus]
+        }
+        ```
+    - response: `Same as /notifications/{notification_id} GET response`
+
   - /-/launched *GET*
     - purpose: Fetch launched notifications
     - query_string:

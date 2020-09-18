@@ -55,6 +55,10 @@ class CreateNotificationRequest:
     scheduled_at: Optional[datetime.datetime]
 
 
+class UpdateNotificationStatusRequest:
+    status: NotificationStatus
+
+
 class NotificationsHttpResource:
     NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
     NOTIFICATION_WORKER_COUNT = config.api_server.notification_worker.worker_count
@@ -72,6 +76,7 @@ class NotificationsHttpResource:
         self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
         self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
         self.router.add_route('GET', '/-/launched', self.get_launched_notification)
+        self.router.add_route('PUT', '/{notification_uuid}/status', self.update_notification_status)
 
     @request_error_handler
     async def get_launched_notification(self, request):
@@ -162,6 +167,24 @@ class NotificationsHttpResource:
             image_url=request.image_url,
             icon_url=request.icon_url,
             conditions=conditions,
+        )
+        return json_response(result=notification_model_to_dict(notification))
+
+    @request_error_handler
+    async def update_notification_status(self, request):
+        notification_uuid = request.match_info['notification_uuid']
+        notification = await find_notification_by_id(uuid=notification_uuid)
+
+        if notification is None:
+            return json_response(reason=f'notification not found {notification_uuid}', status=404)
+
+        request_body: UpdateNotificationStatusRequest = convert_request(
+            UpdateNotificationStatusRequest,
+            await request.json(),
+        )
+        notification = await change_notification_status(
+            target_notification=notification,
+            status=request_body.status,
         )
         return json_response(result=notification_model_to_dict(notification))
 
