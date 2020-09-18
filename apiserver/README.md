@@ -31,16 +31,19 @@ class NotificationStatus(enum.IntEnum):
 ```
 
 ```python
-# apiserver/repository/device.py
-available_join_types = {'OR', 'AND'}
+# apiserver/dispatcher/device.py
+available_join_types = {
+    'OR': '$or',
+    'AND': '$and',
+}
 operators = {
-    'int_eq': VALUE_INT,
-    'int_gt': f'{VALUE_INT}__gt',
-    'int_gte': f'{VALUE_INT}__gte',
-    'int_lt': f'{VALUE_INT}__lt',
-    'int_lte': f'{VALUE_INT}__lte',
-    'str_exists': f'{VALUE_STR}__contains',
-    'str_eq': VALUE_STR,
+    'int_eq': ('$eq', int),
+    'int_gt': ('$gt', int),
+    'int_gte': ('$gte', int),
+    'int_lt': ('$lt', int),
+    'int_lte': ('$lte', int),
+    'str_exists': ('$elemMatch', str),
+    'str_eq': ('$eq', str),
 }
 ```
 
@@ -55,30 +58,18 @@ operators = {
         {
           "success": ...,
           "result": {
+            "_id": ..bson object id..,
+            "random_bucket": ..random number range 1 to 10000..,
             "id": ..sequential number..,
             "external_id": ...device id...,
             "push_token": ...,
             "send_platform": ...,
             "device_platform": ...,
-            "created_at": ...,
-            "modified_at": ...,
             "device_properties": [ {...key...: ...value...}, ... ]
           },
           "reason": ...,
         }
         ```
-
-  - / *POST*
-    - purpose: Create device
-    - request:
-        ```
-        {
-          "push_token": "{{PUSH_TOKEN}}",
-          "send_platform": 1,  # FCM
-          "device_platform": 1  # ANDROID
-        }
-        ```
-    - response: `Same as /devices/{external_id} GET response`
 
   - / *PUT*
     - purpose: Update or Create device information
@@ -98,20 +89,9 @@ operators = {
         {
           "properties": [
             {"key": "k", "value": "v"},  # Request str type (quoted) value means key k's type is "string"
-            {"key": "k", "value": 1}  # Request int type (not-quoted) value means key k's type is "int"
-          ]
-        }
-        ```
-    - response: `Same as /devices/{external_id} GET response`
-
-  - /{external_id}/properties *DELETE*
-    - purpose: Delete device's properties
-    - request:
-        ```
-        {
-          "properties": [
-            {"key": "k", "value": "v"},  # Request str type (quoted) value means key k's type is "string"
-            {"key": "k", "value": 1}  # Request int type (not-quoted) value means key k's type is "int"
+            {"key": "k", "value": 1},  # Request int type (not-quoted) value means key k's type is "int"
+            {"key": "k", "value": null},  # If value is null, it means "Remove this field"
+            {"key": "k", "value": [1, 2, 3]}  # Request list typevalue means key k's type is "list"
           ]
         }
         ```
@@ -172,13 +152,13 @@ operators = {
           "success": ...,
           "result": [
               {
+                    "_id": ..bson object id..,
+                    "random_bucket": ..random number range 1 to 10000..,
                     "id": ..sequential number..,
                     "external_id": ...device id...,
                     "push_token": ...,
                     "send_platform": ...,
                     "device_platform": ...,
-                    "created_at": ...,
-                    "modified_at": ...,
                     "device_properties": [ {...key...: ...value...}, ... ]
                   }
               ]
