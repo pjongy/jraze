@@ -9,7 +9,7 @@ from aioredis import ConnectionsPool
 
 from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
-from apiserver.repository.device import get_device_total_by_conditions
+from apiserver.dispatcher.device import DeviceDispatcher
 from apiserver.repository.notification import find_notifications_by_status, \
     notification_model_to_dict, find_notification_by_id, create_notification, \
     change_notification_status, find_launched_notification
@@ -62,6 +62,9 @@ class NotificationsHttpResource:
     def __init__(self, router, storage, secret, external):
         self.router = router
         self.redis_pool: ConnectionsPool = storage['redis']['notification_queue']
+        self.device_dispatcher = DeviceDispatcher(
+            database=storage['mongo']
+        )
 
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
@@ -176,8 +179,9 @@ class NotificationsHttpResource:
         )
 
         conditions = deserialize.deserialize(ConditionClause, notification.conditions)
-        device_total = await get_device_total_by_conditions(
-            conditions=conditions
+        device_total = await self.device_dispatcher.get_device_total_by_condition(
+            external_ids=[],
+            condition_clause=conditions,
         )
         notification_job_capacity = math.ceil(device_total / self.NOTIFICATION_WORKER_COUNT)
 

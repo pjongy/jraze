@@ -1,6 +1,7 @@
 import aiohttp_cors
 
 import aioredis
+import motor.motor_asyncio
 from aiohttp import web
 
 from apiserver.config import config
@@ -30,6 +31,12 @@ async def application():
         db=mysql_config.database,
     )
 
+    mongo_config = config.api_server.mongo
+    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(
+        f'mongodb://{mongo_config.user}:{mongo_config.password}'
+        f'@{mongo_config.host}:{mongo_config.port}'
+    )[mongo_config.database]
+
     redis_config = config.api_server.redis
 
     notification_queue_pool = await aioredis.create_pool(
@@ -43,7 +50,8 @@ async def application():
     storage = {
         'redis': {
             'notification_queue': notification_queue_pool,
-        }
+        },
+        'mongo': mongo_client
     }
     external = {}
     secret = {

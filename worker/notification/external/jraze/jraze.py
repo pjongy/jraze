@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import deserialize
 import httpx
@@ -19,9 +19,7 @@ class SearchDeviceResponse:
             push_token: str
             send_platform: SendPlatform
             device_platform: DevicePlatform
-            created_at: str
-            modified_at: Optional[str]
-            device_properties: List[dict]
+            device_properties: dict
         total: int
         devices: List[Device]
     result: Result
