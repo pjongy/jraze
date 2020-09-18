@@ -19,7 +19,7 @@ from apiserver.model.notification import NotificationStatus
 from common.queue.notification import publish_notification_job
 from common.structure.condition import ConditionClause
 from common.structure.job.notification import NotificationJob, NotificationTask
-from common.util import string_to_utc_datetime, utc_now
+from common.util import string_to_utc_datetime, utc_now, datetime_to_utc_datetime
 
 logger = get_logger(__name__)
 
@@ -196,9 +196,17 @@ class NotificationsHttpResource:
         if notification is None:
             return json_response(reason=f'notification not found {notification_uuid}', status=404)
 
+        if datetime_to_utc_datetime(notification.scheduled_at) > utc_now():
+            # NOTE(pjongy): Set notification status LAUNCHED it will be queued by notification batch
+            notification = await change_notification_status(
+                target_notification=notification,
+                status=NotificationStatus.LAUNCHED,
+            )
+            return json_response(result=notification_model_to_dict(notification))
+
         notification = await change_notification_status(
             target_notification=notification,
-            status=NotificationStatus.LAUNCHED,
+            status=NotificationStatus.QUEUED,
         )
 
         conditions = deserialize.deserialize(ConditionClause, notification.conditions)
