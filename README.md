@@ -74,7 +74,7 @@ $ docker-compose -f local-docker-compose.yml up -d
   - Find devices comfort notification's condition and publish job for 'Push worker'
   - Client for update notifications' sent result
 
-- Messaging worker (Push worker)
+- Messaging worker
   ---
   - Client for send push message to each send platform like: FCM, APNs
   - Publish job back for 'Notification worker' to update notification sent result (success / failed)
@@ -82,11 +82,22 @@ $ docker-compose -f local-docker-compose.yml up -d
 
 ### Sequence
 ```
-[API server] ->  [Notification worker] -> [Push worker]
-                        ^____________________|
-     ^                  |________
-     |____[Notification batch]__|
+      ____________________
+     v                    |                        _____
+[API server]r]r] --> [Notification worker]r]r] ---(____()---> [Messaging worker]r]r]
+     ^                      ^              ______                  |
+     |                      |-------------(_____()-------+---------+
+     |                                                   |
+     |____[Notification batch]---------------------------+
 ```
+
+#### Multiple (Enable scale out) instance
+- APIServer
+- NotificationWorker
+- MessagingWorker
+
+#### Monolith (Unable scale out) instance
+- NotificationBatch
 
 ## Trouble shooting
 
