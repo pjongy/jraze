@@ -50,8 +50,6 @@ $ docker-compose -f local-docker-compose.yml up -d
 ```
 /
   /apiserver
-  /batch
-    /notification
   /worker
     /messaging
     /notification
@@ -64,10 +62,6 @@ $ docker-compose -f local-docker-compose.yml up -d
   - Also it shows device's event for notification
   - Publish job for 'Notification worker' if not scheduled notification
   - Change just status of notification if scheduled notification (It will published by 'Notification batch')
-
-- Notification batch
-  ---
-  - Periodically check launched notification existence and publish "launched scheduled notification" for 'Notification worker'
 
 - Notification worker
   ---
@@ -82,22 +76,17 @@ $ docker-compose -f local-docker-compose.yml up -d
 
 ### Sequence
 ```
-      ____________________
-     v                    |                        _____
-[API server]r]r] --> [Notification worker]r]r] ---(____()---> [Messaging worker]r]r]
-     ^                      ^              ______                  |
-     |                      |-------------(_____()-------+---------+
-     |                                                   |
-     |____[Notification batch]---------------------------+
+      _________________________
+     v          _____          |                      _____
+[API server] --(____()----> [Notification worker] ---(____()---> [Messaging worker]
+                            ^                  ______                  |
+                            +-----------------(_____()-----------------+
 ```
 
-#### Multiple (Enable scale out) instance
+#### Scale out-able instance
 - APIServer
 - NotificationWorker
 - MessagingWorker
-
-#### Monolith (Unable scale out) instance
-- NotificationBatch
 
 ## Trouble shooting
 
