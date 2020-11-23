@@ -11,6 +11,7 @@ from apiserver.repository.device import find_device_by_external_id, create_devic
 from apiserver.repository.device_notification_log import find_notification_events_by_external_id, \
     device_notification_log_model_to_dict
 from apiserver.resource import json_response, convert_request
+from apiserver.resource.abstract import AbstractResource
 from common.logger.logger import get_logger
 from common.structure.condition import ConditionClause
 
@@ -64,12 +65,11 @@ class SearchDevicesRequest:
     order_bys: List[str]
 
 
-class DevicesHttpResource:
-    def __init__(self, router, storage, secret, external):
-        self.router = router
-        self.device_dispatcher = DeviceDispatcher(
-            database=storage['mongo']
-        )
+class DevicesHttpResource(AbstractResource):
+    def __init__(self, device_dispatcher: DeviceDispatcher):
+        super().__init__(logger=logger)
+        self.router = self.app.router
+        self.device_dispatcher = device_dispatcher
 
     def route(self):
         self.router.add_route('PUT', '', self.upsert_device)

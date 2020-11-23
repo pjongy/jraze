@@ -1,11 +1,8 @@
 {
   "notification_worker": {
     "pool_size": "5",
-    "redis": {
-      "host": "localhost",
-      "notification_queue": {
-        "database": "0"
-      }
+    "task_queue": {
+      "database": "jraze_task_queue"
     }
   }
 }

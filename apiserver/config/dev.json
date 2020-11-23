@@ -2,11 +2,6 @@
   "api_server": {
     "mysql": {
       "database": "jraze"
-    },
-    "redis": {
-      "notification_queue": {
-        "database": 0
-      }
     }
   }
 }

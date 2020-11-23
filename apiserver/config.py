@@ -30,27 +30,10 @@ class Config:
             password: str
             database: str
 
-        @deserialize.default('port', 6379)
-        @deserialize.parser('port', int)
-        class Redis:
-            @deserialize.parser('database', int)
-            class Database:
-                database: int
-            host: str
-            port: int
-            password: str
-
-            notification_queue: Database
-
-        @deserialize.parser('worker_count', int)
-        class Worker:
-            worker_count: int
-
         mysql: MySQL
+        task_queue: MySQL
         mongo: Mongo
-        redis: Redis
         port: int
-        notification_worker: Worker
         internal_api_keys: List[str]  # comma separated string to list
 
     api_server: APIServer

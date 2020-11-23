@@ -9,6 +9,7 @@ from apiserver.repository.device_notification_log import add_device_notification
 from apiserver.repository.notification import increase_sent_count, change_notification_status, \
     find_notification_by_id
 from apiserver.resource import json_response, convert_request
+from apiserver.resource.abstract import AbstractResource
 from common.logger.logger import get_logger
 from apiserver.model.notification import NotificationStatus
 
@@ -25,10 +26,11 @@ class IncreaseNotificationSentAmountRequest:
     android: int
 
 
-class InternalHttpResource:
-    def __init__(self, router, storage, secret, external):
-        self.router = router
-        self.internal_api_keys: List[str] = secret['internal_api_keys']
+class InternalHttpResource(AbstractResource):
+    def __init__(self, internal_api_keys: List[str]):
+        super().__init__(logger=logger)
+        self.router = self.app.router
+        self.internal_api_keys = internal_api_keys
 
     def _check_server_key(self, request: Request):
         x_server_key = request.headers.get('X-Server-Key')

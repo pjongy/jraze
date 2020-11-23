@@ -30,14 +30,6 @@ services:
     networks:
       local_net:
         ipv4_address: 172.12.1.9
-  redis-mq:
-    image: 'redis:5.0.5'
-    command: redis-server --appendonly yes --requirepass redis_password
-    ports:
-      - 6379:6379
-    networks:
-      local_net:
-        ipv4_address: 172.12.1.3
   api-server:
     build:
       context: .
@@ -54,8 +46,9 @@ services:
       API_SERVER__MONGO__HOST: 172.12.1.9
       API_SERVER__MONGO__USER: mongo_user
       API_SERVER__MONGO__PASSWORD: mongo_password
-      API_SERVER__REDIS__HOST: 172.12.1.3
-      API_SERVER__REDIS__PASSWORD: redis_password
+      API_SERVER__TASK_QUEUE__HOST: 172.12.1.2
+      API_SERVER__TASK_QUEUE__USER: root
+      API_SERVER__TASK_QUEUE__PASSWORD: mysql_password
       API_SERVER__INTERNAL_API_KEYS: internal_key_1,internal_key_2
     networks:
       local_net:
@@ -63,7 +56,6 @@ services:
     restart: unless-stopped
     depends_on:
       - mysql
-      - redis-mq
   messaging-worker:
     build:
       context: .
@@ -75,8 +67,9 @@ services:
     environment:
       ENV: dev
       PUSH_WORKER__POOL_SIZE: 1
-      PUSH_WORKER__REDIS__PASSWORD: redis_password
-      PUSH_WORKER__REDIS__HOST: 172.12.1.3
+      PUSH_WORKER__TASK_QUEUE__HOST: 172.12.1.2
+      PUSH_WORKER__TASK_QUEUE__USER: root
+      PUSH_WORKER__TASK_QUEUE__PASSWORD: mysql_password
       PUSH_WORKER__FCM__LEGACY__SERVER_KEY: ${PUSH_WORKER__FCM__LEGACY__SERVER_KEY:-empty}
       PUSH_WORKER__FCM__V1__KEY_FILE_NAME: /fcm_service_account.json
       PUSH_WORKER__FCM__V1__PROJECT_ID: ${PUSH_WORKER__FCM__V1__PROJECT_ID:-empty}
@@ -93,7 +86,6 @@ services:
     restart: unless-stopped
     depends_on:
       - mysql
-      - redis-mq
   notification-worker:
     build:
       context: .
@@ -101,8 +93,9 @@ services:
     environment:
       ENV: dev
       NOTIFICATION_WORKER__POOL_SIZE: 1
-      NOTIFICATION_WORKER__REDIS__PASSWORD: redis_password
-      NOTIFICATION_WORKER__REDIS__HOST: 172.12.1.3
+      NOTIFICATION_WORKER__TASK_QUEUE__HOST: 172.12.1.2
+      NOTIFICATION_WORKER__TASK_QUEUE__USER: root
+      NOTIFICATION_WORKER__TASK_QUEUE__PASSWORD: mysql_password
       NOTIFICATION_WORKER__EXTERNAL__JRAZE__BASE_URL: http://172.12.1.4:8080/
       NOTIFICATION_WORKER__EXTERNAL__JRAZE__X_SERVER_KEY: internal_key_1
     networks:
@@ -111,21 +104,3 @@ services:
     restart: unless-stopped
     depends_on:
       - mysql
-      - redis-mq
-  notification-batch:
-    build:
-      context: .
-      dockerfile: batch/notification/Dockerfile
-    environment:
-      ENV: dev
-      NOTIFICATION_BATCH__REDIS__PASSWORD: redis_password
-      NOTIFICATION_BATCH__REDIS__HOST: 172.12.1.3
-      NOTIFICATION_BATCH__EXTERNAL__JRAZE__BASE_URL: http://172.12.1.4:8080/
-      NOTIFICATION_BATCH__EXTERNAL__JRAZE__X_SERVER_KEY: internal_key_1
-    networks:
-      local_net:
-        ipv4_address: 172.12.1.8
-    restart: unless-stopped
-    depends_on:
-      - mysql
-      - redis-mq

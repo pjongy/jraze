@@ -20,8 +20,5 @@
         "project_id": "test"
       }
     },
-    "redis": {
-      "host": "localhost"
-    }
   }
 }

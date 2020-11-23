@@ -1,12 +1,14 @@
 import asyncio
 import dataclasses
-import multiprocessing
-from typing import Dict
+from typing import Dict, List
 
-import aioredis
+import aiomysql
+import deserialize
+from jasyncq.dispatcher.tasks import TasksDispatcher
+from jasyncq.model.task import Task
+from jasyncq.repository.tasks import TaskRepository
 
 from common.logger.logger import get_logger
-from common.queue.messaging import blocking_get_messaging_job
 from common.structure.job.messaging import MessagingJob, MessagingTask
 from worker.messaging.config import config
 from worker.messaging.external.apns.abstract import AbstractAPNs
@@ -21,22 +23,41 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    REDIS_TIMEOUT = 0  # Infinite
+    MESSAGING_QUEUE = 'MESSAGING_QUEUE'
+    TASK_FETCH_SIZE = 1
 
     def __init__(self, pid):
         loop = asyncio.get_event_loop()
 
-        redis_host = config.push_worker.redis.host
-        redis_port = config.push_worker.redis.port
-        redis_password = config.push_worker.redis.password
-        self.redis_pool = loop.run_until_complete(
-            aioredis.create_pool(
-                f'redis://{redis_host}:{redis_port}',
-                password=redis_password,
-                db=int(config.push_worker.redis.notification_queue.database),
-                minsize=5,
-                maxsize=10,
+        task_queue_config = config.push_worker.task_queue
+        self.task_queue_pool = loop.run_until_complete(
+            aiomysql.create_pool(
+                host=task_queue_config.host,
+                port=task_queue_config.port,
+                user=task_queue_config.user,
+                password=task_queue_config.password,
+                db=task_queue_config.database,
+                loop=loop,
+                autocommit=False,
             )
+        )
+
+        messaging_task_queue_repository = TaskRepository(
+            pool=self.task_queue_pool,
+            topic_name='MESSAGING_TOPIC',
+        )
+        loop.run_until_complete(messaging_task_queue_repository.initialize())
+        self.messaging_task_queue = TasksDispatcher(
+            repository=messaging_task_queue_repository,
+        )
+
+        notification_queue_repository = TaskRepository(
+            pool=self.task_queue_pool,
+            topic_name='NOTIFICATION_TOPIC',
+        )
+        loop.run_until_complete(notification_queue_repository.initialize())
+        notification_queue_dispatcher = TasksDispatcher(
+            repository=notification_queue_repository
         )
 
         fcm: AbstractFCM = self.create_fcm_client()
@@ -45,7 +66,7 @@ class Replica:
             MessagingTask.SEND_PUSH_MESSAGE: SendPushMessageTask(
                 fcm=fcm,
                 apns=apns,
-                redis_pool=self.redis_pool,
+                notification_task_queue=notification_queue_dispatcher,
             )
         }
 
@@ -87,15 +108,25 @@ class Replica:
 
     async def job(self):  # real working job
         while True:
-            with await self.redis_pool as redis_conn:
-                job = await blocking_get_messaging_job(
-                    redis_conn=redis_conn,
-                    timeout=self.REDIS_TIMEOUT
-                )
-                logger.debug(multiprocessing.current_process())
+            pending_tasks = await self.messaging_task_queue.fetch_pending_tasks(
+                queue_name=self.MESSAGING_QUEUE,
+                limit=self.TASK_FETCH_SIZE,
+                check_term_seconds=60,
+            )
+            scheduled_tasks = await self.messaging_task_queue.fetch_scheduled_tasks(
+                queue_name=self.MESSAGING_QUEUE,
+                limit=self.TASK_FETCH_SIZE,
+            )
 
-                if not job:
-                    continue
+            tasks: List[Task] = [*pending_tasks, *scheduled_tasks]
+            if not tasks:
+                # NOTE(pjongy): Relax wasting
+                await asyncio.sleep(1)
 
-                logger.info('new task')
-                asyncio.create_task(self.process_job(job))
+            await asyncio.gather(*[
+                self.process_job(job=deserialize.deserialize(MessagingJob, task.task))
+                for task in tasks
+            ])
+            task_ids = [str(task.uuid) for task in tasks]
+            if task_ids:
+                await self.messaging_task_queue.complete_tasks(task_ids=task_ids)

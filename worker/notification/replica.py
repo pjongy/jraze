@@ -1,12 +1,14 @@
 import asyncio
 import dataclasses
-import multiprocessing
-from typing import Dict
+from typing import Dict, List
 
-import aioredis
+import aiomysql
+import deserialize
+from jasyncq.dispatcher.tasks import TasksDispatcher
+from jasyncq.model.task import Task
+from jasyncq.repository.tasks import TaskRepository
 
 from common.logger.logger import get_logger
-from common.queue.notification import blocking_get_notification_job
 from common.structure.job.notification import NotificationJob, NotificationTask
 from worker.notification.config import config
 from worker.notification.external.jraze.jraze import JrazeApi
@@ -18,39 +20,53 @@ logger = get_logger(__name__)
 
 
 class Replica:
-    REDIS_TIMEOUT = 0  # Infinite
-    DEVICES_PER_ONCE_SIZE = 300
-    TOTAL_WORKERS = int(config.notification_worker.pool_size)
+    NOTIFICATION_JOB_QUEUE = 'NOTIFICATION_JOB_QUEUE'
+    TASK_FETCH_SIZE = 300
 
     def __init__(self, pid):
         loop = asyncio.get_event_loop()
 
-        redis_host = config.notification_worker.redis.host
-        redis_port = config.notification_worker.redis.port
-        redis_password = config.notification_worker.redis.password
-        self.redis_pool = loop.run_until_complete(
-            aioredis.create_pool(
-                f'redis://{redis_host}:{redis_port}',
-                password=redis_password,
-                db=int(config.notification_worker.redis.notification_queue.database),
-                minsize=5,
-                maxsize=10,
+        task_queue_config = config.notification_worker.task_queue
+        self.task_queue_pool = loop.run_until_complete(
+            aiomysql.create_pool(
+                host=task_queue_config.host,
+                port=task_queue_config.port,
+                user=task_queue_config.user,
+                password=task_queue_config.password,
+                db=task_queue_config.database,
+                loop=loop,
+                autocommit=False,
             )
         )
-
+        notification_queue_repository = TaskRepository(
+            pool=self.task_queue_pool,
+            topic_name='NOTIFICATION_TOPIC',
+        )
+        loop.run_until_complete(notification_queue_repository.initialize())
+        self.notification_queue_dispatcher = TasksDispatcher(
+            repository=notification_queue_repository
+        )
         self.jraze_api = JrazeApi()
+
+        messaging_task_queue_repository = TaskRepository(
+            pool=self.task_queue_pool,
+            topic_name='MESSAGING_TOPIC',
+        )
+        loop.run_until_complete(messaging_task_queue_repository.initialize())
+        messaging_task_queue = TasksDispatcher(
+            repository=messaging_task_queue_repository,
+        )
         self.tasks: Dict[NotificationTask, AbstractTask] = {
             NotificationTask.LAUNCH_NOTIFICATION: LaunchNotificationTask(
                 jraze_api=self.jraze_api,
-                redis_pool=self.redis_pool,
+                messaging_task_queue=messaging_task_queue,
             ),
             NotificationTask.UPDATE_RESULT: UpdatePushResultTask(
                 jraze_api=self.jraze_api,
             ),
         }
-        loop.run_until_complete(self.job())
-
         logger.debug(f'Worker {pid} up')
+        loop.run_until_complete(self.job())
 
     async def process_job(self, job: NotificationJob):  # real worker if job published
         try:
@@ -67,15 +83,25 @@ class Replica:
 
     async def job(self):  # real working job
         while True:
-            with await self.redis_pool as redis_conn:
-                job = await blocking_get_notification_job(
-                    redis_conn=redis_conn,
-                    timeout=self.REDIS_TIMEOUT
-                )
-                logger.debug(multiprocessing.current_process())
+            pending_tasks = await self.notification_queue_dispatcher.fetch_pending_tasks(
+                queue_name=self.NOTIFICATION_JOB_QUEUE,
+                limit=self.TASK_FETCH_SIZE,
+                check_term_seconds=60,
+            )
+            scheduled_tasks = await self.notification_queue_dispatcher.fetch_scheduled_tasks(
+                queue_name=self.NOTIFICATION_JOB_QUEUE,
+                limit=self.TASK_FETCH_SIZE,
+            )
 
-                if not job:
-                    continue
+            tasks: List[Task] = [*pending_tasks, *scheduled_tasks]
+            if not tasks:
+                # NOTE(pjongy): Relax wasting
+                await asyncio.sleep(1)
 
-                logger.info('new task')
-                asyncio.create_task(self.process_job(job=job))
+            await asyncio.gather(*[
+                self.process_job(job=deserialize.deserialize(NotificationJob, task.task))
+                for task in tasks
+            ])
+            task_ids = [str(task.uuid) for task in tasks]
+            if task_ids:
+                await self.notification_queue_dispatcher.complete_tasks(task_ids=task_ids)

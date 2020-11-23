@@ -3,17 +3,12 @@
     "mysql": {
       "database": "jraze"
     },
+    "task_queue": {
+      "database": "jraze_task_queue"
+    },
     "mongo": {
       "database": "jraze"
     },
-    "redis": {
-      "notification_queue": {
-        "database": 0
-      }
-    },
-    "port": 8080,
-    "notification_worker": {
-      "worker_count": 5
-    }
+    "port": 8080
   }
 }

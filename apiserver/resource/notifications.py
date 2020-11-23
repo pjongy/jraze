@@ -1,25 +1,22 @@
-import asyncio
 import dataclasses
 import datetime
-import math
 from typing import List, Optional
 
 import deserialize
-from aioredis import ConnectionsPool
+from jasyncq.dispatcher.tasks import TasksDispatcher
 
-from apiserver.config import config
 from apiserver.decorator.request import request_error_handler
 from apiserver.dispatcher.device import DeviceDispatcher
 from apiserver.repository.notification import find_notifications_by_status, \
     notification_model_to_dict, find_notification_by_id, create_notification, \
     change_notification_status, find_launched_notification
 from apiserver.resource import json_response, convert_request
+from apiserver.resource.abstract import AbstractResource
 from common.logger.logger import get_logger
 from apiserver.model.notification import NotificationStatus
-from common.queue.notification import publish_notification_job
 from common.structure.condition import ConditionClause
-from common.structure.job.notification import NotificationJob, NotificationTask
-from common.util import string_to_utc_datetime, utc_now, datetime_to_utc_datetime
+from common.structure.job.notification import NotificationTask
+from common.util import string_to_utc_datetime, utc_now
 
 logger = get_logger(__name__)
 
@@ -59,16 +56,16 @@ class UpdateNotificationStatusRequest:
     status: NotificationStatus
 
 
-class NotificationsHttpResource:
-    NOTIFICATION_JOB_QUEUE_TOPIC = 'NOTIFICATION_JOB_QUEUE'
-    NOTIFICATION_WORKER_COUNT = config.api_server.notification_worker.worker_count
-
-    def __init__(self, router, storage, secret, external):
-        self.router = router
-        self.redis_pool: ConnectionsPool = storage['redis']['notification_queue']
-        self.device_dispatcher = DeviceDispatcher(
-            database=storage['mongo']
-        )
+class NotificationsHttpResource(AbstractResource):
+    def __init__(
+        self,
+        device_dispatcher: DeviceDispatcher,
+        notification_task_queue: TasksDispatcher,
+    ):
+        super().__init__(logger=logger)
+        self.router = self.app.router
+        self.device_dispatcher = device_dispatcher
+        self.notification_task_queue = notification_task_queue
 
     def route(self):
         self.router.add_route('GET', '', self.get_notifications)
@@ -196,58 +193,33 @@ class NotificationsHttpResource:
         if notification is None:
             return json_response(reason=f'notification not found {notification_uuid}', status=404)
 
-        if datetime_to_utc_datetime(notification.scheduled_at) > utc_now():
-            # NOTE(pjongy): Set notification status LAUNCHED it will be queued by notification batch
-            notification = await change_notification_status(
-                target_notification=notification,
-                status=NotificationStatus.LAUNCHED,
-            )
-            return json_response(result=notification_model_to_dict(notification))
-
         notification = await change_notification_status(
             target_notification=notification,
             status=NotificationStatus.QUEUED,
         )
-
         conditions = deserialize.deserialize(ConditionClause, notification.conditions)
-        device_total = await self.device_dispatcher.get_device_total_by_condition(
-            external_ids=[],
-            condition_clause=conditions,
-        )
-        notification_job_capacity = math.ceil(device_total / self.NOTIFICATION_WORKER_COUNT)
 
+        tasks = [{
+            'task': NotificationTask.LAUNCH_NOTIFICATION,
+            'kwargs': {
+                'notification': {
+                    'id': notification.id,
+                    'uuid': str(notification.uuid),
+                    'title': notification.title,
+                    'body': notification.body,
+                    'image_url': notification.image_url,
+                    'icon_url': notification.icon_url,
+                    'deep_link': notification.deep_link,
+                },
+                'conditions': dataclasses.asdict(conditions),
+            },
+        }]
         try:
-            tasks = []
-            with await self.redis_pool as redis_conn:
-                for job_index in range(self.NOTIFICATION_WORKER_COUNT):
-                    job: NotificationJob = deserialize.deserialize(
-                        NotificationJob, {
-                            'task': NotificationTask.LAUNCH_NOTIFICATION,
-                            'kwargs': {
-                                'notification': {
-                                    'id': notification.id,
-                                    'uuid': str(notification.uuid),
-                                    'title': notification.title,
-                                    'body': notification.body,
-                                    'image_url': notification.image_url,
-                                    'icon_url': notification.icon_url,
-                                    'deep_link': notification.deep_link,
-                                },
-                                'conditions': dataclasses.asdict(conditions),
-                                'device_range': {
-                                    'start': job_index * notification_job_capacity,
-                                    'size': notification_job_capacity,
-                                },
-                            },
-                        }
-                    )
-                    tasks.append(
-                        publish_notification_job(
-                            redis_conn=redis_conn,
-                            job=job,
-                        )
-                    )
-                await asyncio.gather(*tasks)
+            await self.notification_task_queue.apply_tasks(
+                tasks=tasks,
+                queue_name='NOTIFICATION_JOB_QUEUE',
+                scheduled_at=int(notification.scheduled_at.timestamp())
+            )
         except Exception as e:  # rollback if queue pushing failed
             logger.warning(f'rollback because of queue pushing failed {e}')
             notification = await change_notification_status(

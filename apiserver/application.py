@@ -1,10 +1,14 @@
 import aiohttp_cors
+import aiomysql
 
-import aioredis
 import motor.motor_asyncio
 from aiohttp import web
+from jasyncq.dispatcher.tasks import TasksDispatcher
+from jasyncq.repository.tasks import TaskRepository
 
 from apiserver.config import config
+from apiserver.dispatcher.device import DeviceDispatcher
+from apiserver.resource.abstract import AbstractResource
 from apiserver.resource.devices import DevicesHttpResource
 from apiserver.resource.internal import InternalHttpResource
 from apiserver.resource.notifications import NotificationsHttpResource
@@ -37,41 +41,46 @@ async def application():
         f'@{mongo_config.host}:{mongo_config.port}'
     )[mongo_config.database]
 
-    redis_config = config.api_server.redis
-
-    notification_queue_pool = await aioredis.create_pool(
-        f'redis://{redis_config.host}:{redis_config.port}',
-        password=redis_config.password,
-        minsize=5,
-        maxsize=10,
-        db=redis_config.notification_queue.database,
+    task_queue_config = config.api_server.task_queue
+    task_queue_pool = await aiomysql.create_pool(
+        host=task_queue_config.host,
+        port=task_queue_config.port,
+        user=task_queue_config.user,
+        password=task_queue_config.password,
+        db=task_queue_config.database,
+        autocommit=False,
     )
 
-    storage = {
-        'redis': {
-            'notification_queue': notification_queue_pool,
-        },
-        'mongo': mongo_client
-    }
-    external = {}
-    secret = {
-        'internal_api_keys': config.api_server.internal_api_keys,
-    }
+    notification_task_queue_repository = TaskRepository(
+        pool=task_queue_pool,
+        topic_name='NOTIFICATION_TOPIC',
+    )
+    await notification_task_queue_repository.initialize()
+    notification_task_queue = TasksDispatcher(
+        repository=notification_task_queue_repository,
+    )
+
     resource_list = {
-        '/devices': DevicesHttpResource,
-        '/notifications': NotificationsHttpResource,
-        '/internal': InternalHttpResource,
+        '/devices': DevicesHttpResource(
+            device_dispatcher=DeviceDispatcher(
+                database=mongo_client
+            )
+        ),
+        '/notifications': NotificationsHttpResource(
+            device_dispatcher=DeviceDispatcher(
+                database=mongo_client
+            ),
+            notification_task_queue=notification_task_queue,
+        ),
+        '/internal': InternalHttpResource(
+            internal_api_keys=config.api_server.internal_api_keys,
+        ),
     }
 
     for path, resource in resource_list.items():
-        subapp = web.Application(logger=logger)
-        resource(
-            router=subapp.router,
-            storage=storage,
-            secret=secret,
-            external=external,
-        ).route()
-        plugin_app(app, path, subapp)
+        resource: AbstractResource = resource  # NOTE(pjongy): For type hinting
+        resource.route()
+        plugin_app(app, path, resource.app)
 
     cors = aiohttp_cors.setup(app)
     allow_url = '*'

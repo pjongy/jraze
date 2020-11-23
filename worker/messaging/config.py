@@ -34,24 +34,19 @@ class Config:
             legacy: Legacy
             client: str
 
-        @deserialize.default('port', 6379)
+        @deserialize.default('port', 3306)
         @deserialize.parser('port', int)
-        class Redis:
-
-            @deserialize.parser('database', int)
-            class Database:
-                database: int
-
+        class MySQL:
             host: str
             port: int
+            user: str
             password: str
-
-            notification_queue: Database
+            database: str
 
         fcm: FCM
         apns: APNs
         pool_size: int
-        redis: Redis
+        task_queue: MySQL
 
     push_worker: MessagingWorker
 

@@ -7,12 +7,6 @@ from common.structure.enum import DevicePlatform
 
 
 @dataclasses.dataclass
-class Range:
-    start: int
-    size: int
-
-
-@dataclasses.dataclass
 class Notification:
     id: int
     uuid: str
@@ -27,7 +21,6 @@ class Notification:
 class NotificationLaunchMessageArgs:
     notification: Notification
     conditions: Optional[ConditionClause]
-    device_range: Range
 
 
 @dataclasses.dataclass

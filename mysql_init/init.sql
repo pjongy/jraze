@@ -1,3 +1,4 @@
 SET NAMES utf8;
 
 CREATE DATABASE IF NOT EXISTS `jraze`;
+CREATE DATABASE IF NOT EXISTS `jraze_task_queue`;
