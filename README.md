@@ -60,8 +60,7 @@ $ docker-compose -f local-docker-compose.yml up -d
   - Endpoint for client can attach through REST API
   - Take roles about register device/notification
   - Also it shows device's event for notification
-  - Publish job for 'Notification worker' if not scheduled notification
-  - Change just status of notification if scheduled notification (It will published by 'Notification batch')
+  - Publish job for 'Notification worker'
 
 - Notification worker
   ---
