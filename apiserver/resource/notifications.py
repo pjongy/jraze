@@ -9,7 +9,7 @@ from apiserver.decorator.request import request_error_handler
 from apiserver.dispatcher.device import DeviceDispatcher
 from apiserver.repository.notification import find_notifications_by_status, \
     notification_model_to_dict, find_notification_by_id, create_notification, \
-    change_notification_status, find_launched_notification
+    change_notification_status
 from apiserver.resource import json_response, convert_request
 from apiserver.resource.abstract import AbstractResource
 from common.logger.logger import get_logger
@@ -30,15 +30,6 @@ class FetchNotificationsRequest:
     start: int
     size: int
     order_bys: List[str]
-
-
-@deserialize.default('start', 0)
-@deserialize.default('size', 10)
-@deserialize.parser('start', int)
-@deserialize.parser('size', int)
-class FetchLaunchedNotificationsRequest:
-    start: int
-    size: int
 
 
 @deserialize.parser('scheduled_at', string_to_utc_datetime)
@@ -72,28 +63,7 @@ class NotificationsHttpResource(AbstractResource):
         self.router.add_route('POST', '', self.create_notification)
         self.router.add_route('GET', '/{notification_uuid}', self.get_notification)
         self.router.add_route('POST', '/{notification_uuid}/:launch', self.launch_notification)
-        self.router.add_route('GET', '/-/launched', self.get_launched_notification)
         self.router.add_route('PUT', '/{notification_uuid}/status', self.update_notification_status)
-
-    @request_error_handler
-    async def get_launched_notification(self, request):
-        query_params: FetchLaunchedNotificationsRequest = convert_request(
-            FetchLaunchedNotificationsRequest,
-            dict(request.rel_url.query),
-        )
-        total, notifications = await find_launched_notification(
-            current_datetime=utc_now(),
-            start=query_params.start,
-            size=query_params.size,
-        )
-
-        return json_response(result={
-            'total': total,
-            'notifications': [
-                notification_model_to_dict(notification)
-                for notification in notifications
-            ]
-        })
 
     @request_error_handler
     async def get_notifications(self, request):
