@@ -16,6 +16,10 @@
 
 ---
 
+## API specification
+[API specification document](apiserver/README.md)
+
+
 ## Quick start (on local)
 
 ### Pre-requisites
