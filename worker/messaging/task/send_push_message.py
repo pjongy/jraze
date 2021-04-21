@@ -1,6 +1,7 @@
 import dataclasses
 
 import deserialize
+from jasyncq.dispatcher.model.task import TaskIn
 from jasyncq.dispatcher.tasks import TasksDispatcher
 
 from common.logger.logger import get_logger
@@ -60,15 +61,17 @@ class SendPushMessageTask(AbstractTask):
         logger.info(f'sent: {sent}, failed: {failed}')
         await self.notification_task_queue.apply_tasks(
             tasks=[
-                dataclasses.asdict(deserialize.deserialize(NotificationJob, {
-                    'task': NotificationTask.UPDATE_RESULT,
-                    'kwargs': {
-                        'device_platform': task_args.device_platform,
-                        'notification_uuid': task_args.notification_id,
-                        'sent': sent,
-                        'failed': failed,
-                    }
-                }))
+                TaskIn(
+                    task=dataclasses.asdict(deserialize.deserialize(NotificationJob, {
+                        'task': NotificationTask.UPDATE_RESULT,
+                        'kwargs': {
+                            'device_platform': task_args.device_platform,
+                            'notification_uuid': task_args.notification_id,
+                            'sent': sent,
+                            'failed': failed,
+                        }
+                    })),
+                    queue_name='NOTIFICATION_JOB_QUEUE',
+                )
             ],
-            queue_name='NOTIFICATION_JOB_QUEUE'
         )

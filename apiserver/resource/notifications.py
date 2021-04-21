@@ -3,6 +3,7 @@ import datetime
 from typing import List, Optional
 
 import deserialize
+from jasyncq.dispatcher.model.task import TaskIn
 from jasyncq.dispatcher.tasks import TasksDispatcher
 
 from apiserver.decorator.request import request_error_handler
@@ -186,9 +187,14 @@ class NotificationsHttpResource(AbstractResource):
         }]
         try:
             await self.notification_task_queue.apply_tasks(
-                tasks=tasks,
-                queue_name='NOTIFICATION_JOB_QUEUE',
-                scheduled_at=int(notification.scheduled_at.timestamp())
+                tasks=[
+                    TaskIn(
+                        task=task,
+                        queue_name='NOTIFICATION_JOB_QUEUE',
+                        scheduled_at=int(notification.scheduled_at.timestamp()),
+                    )
+                    for task in tasks
+                ],
             )
         except Exception as e:  # rollback if queue pushing failed
             logger.warning(f'rollback because of queue pushing failed {e}')
