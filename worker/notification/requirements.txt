@@ -2,7 +2,7 @@ aiomysql==0.0.20
 deserialize==1.8.0
 gunicorn==20.0.4
 httpx==0.14.0
-jasyncq==0.1.2
+jasyncq==1.1.0
 python-dateutil==2.8.1
 python-json-logger==0.1.11
 PyPika==0.37.6

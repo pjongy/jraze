@@ -5,7 +5,7 @@ from typing import Dict, List
 import aiomysql
 import deserialize
 from jasyncq.dispatcher.tasks import TasksDispatcher
-from jasyncq.model.task import Task
+from jasyncq.dispatcher.model.task import TaskOut
 from jasyncq.repository.tasks import TaskRepository
 
 from common.logger.logger import get_logger
@@ -118,7 +118,7 @@ class Replica:
                 limit=self.TASK_FETCH_SIZE,
             )
 
-            tasks: List[Task] = [*pending_tasks, *scheduled_tasks]
+            tasks: List[TaskOut] = [*pending_tasks, *scheduled_tasks]
             if not tasks:
                 # NOTE(pjongy): Relax wasting
                 await asyncio.sleep(1)

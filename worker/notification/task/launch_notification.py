@@ -2,6 +2,7 @@ import asyncio
 import dataclasses
 
 import deserialize
+from jasyncq.dispatcher.model.task import TaskIn
 from jasyncq.dispatcher.tasks import TasksDispatcher
 
 from common.logger.logger import get_logger
@@ -78,7 +79,12 @@ class LaunchNotificationTask(AbstractTask):
                     notification_id=notification.id,
                 ),
                 self.messaging_task_queue.apply_tasks(
-                    tasks=tasks,
-                    queue_name='MESSAGING_QUEUE'
+                    tasks=[
+                        TaskIn(
+                            task=task,
+                            queue_name='MESSAGING_QUEUE',
+                        )
+                        for task in tasks
+                    ],
                 )
             )
