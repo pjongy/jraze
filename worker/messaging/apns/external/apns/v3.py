@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from aioapns import APNs, NotificationRequest, PushType
 
-from worker.messaging.external.apns.abstract import AbstractAPNs
+from worker.messaging.apns.external.apns.abstract import AbstractAPNs
 
 
 class APNsV3(AbstractAPNs):

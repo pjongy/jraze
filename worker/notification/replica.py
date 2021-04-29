@@ -48,29 +48,38 @@ class Replica:
         )
         self.jraze_api = JrazeApi()
 
-        messaging_task_queue_repository = TaskRepository(
+        apns_messaging_task_queue_repository = TaskRepository(
             pool=self.task_queue_pool,
-            topic_name='MESSAGING_TOPIC',
+            topic_name='APNS_MESSAGING_TOPIC',
         )
-        loop.run_until_complete(messaging_task_queue_repository.initialize())
-        messaging_task_queue = TasksDispatcher(
-            repository=messaging_task_queue_repository,
+        loop.run_until_complete(apns_messaging_task_queue_repository.initialize())
+        apns_messaging_task_queue = TasksDispatcher(
+            repository=apns_messaging_task_queue_repository,
+        )
+        fcm_messaging_task_queue_repository = TaskRepository(
+            pool=self.task_queue_pool,
+            topic_name='FCM_MESSAGING_TOPIC',
+        )
+        loop.run_until_complete(fcm_messaging_task_queue_repository.initialize())
+        fcm_messaging_task_queue = TasksDispatcher(
+            repository=fcm_messaging_task_queue_repository,
         )
         self.tasks: Dict[NotificationTask, AbstractTask] = {
             NotificationTask.LAUNCH_NOTIFICATION: LaunchNotificationTask(
                 jraze_api=self.jraze_api,
-                messaging_task_queue=messaging_task_queue,
+                apns_messaging_task_queue=apns_messaging_task_queue,
+                fcm_messaging_task_queue=fcm_messaging_task_queue,
             ),
             NotificationTask.UPDATE_RESULT: UpdatePushResultTask(
                 jraze_api=self.jraze_api,
             ),
         }
-        logger.debug(f'Worker {pid} up')
+        logger.info(f'Worker {pid} up')
         loop.run_until_complete(self.job())
 
     async def process_job(self, job: NotificationJob):  # real worker if job published
         try:
-            logger.debug(job)
+            logger.info(job)
             try:
                 task = self.tasks[job.task]
             except KeyError as e:
@@ -94,6 +103,7 @@ class Replica:
             )
 
             tasks: List[TaskOut] = [*pending_tasks, *scheduled_tasks]
+            logger.info('running')
             if not tasks:
                 # NOTE(pjongy): Relax wasting
                 await asyncio.sleep(1)

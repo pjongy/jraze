@@ -4,13 +4,12 @@ from typing import List, Optional
 
 import deserialize
 
-from common.structure.enum import DevicePlatform, SendPlatform
+from common.structure.enum import DevicePlatform
 
 
 @deserialize.default('extra', {})
 @dataclasses.dataclass
 class SendPushMessageArgs:
-    send_platform: SendPlatform
     device_platform: DevicePlatform
     notification_id: str
     push_tokens: List[str]

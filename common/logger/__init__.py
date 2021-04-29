@@ -6,6 +6,6 @@ logHandler = logging.StreamHandler()
 formatter = jsonlogger.JsonFormatter()
 logHandler.setFormatter(formatter)
 logging.basicConfig(
-    level='DEBUG',
+    level='INFO',
     handlers=[logHandler]
 )

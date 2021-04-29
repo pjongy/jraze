@@ -8,20 +8,6 @@ from common.configutil import get_config
 class Config:
     @deserialize.parser('pool_size', int)
     class MessagingWorker:
-        class APNs:
-            class PEMCert:
-                file_name: str
-
-            class P8Cert:
-                file_name: str
-                key_id: str
-                team_id: str
-                topic: str  # Bundle id
-
-            pem_cert: PEMCert
-            p8_cert: P8Cert
-            cert_type: str
-
         class FCM:
             class V1:
                 project_id: str
@@ -44,7 +30,6 @@ class Config:
             database: str
 
         fcm: FCM
-        apns: APNs
         pool_size: int
         task_queue: MySQL
 

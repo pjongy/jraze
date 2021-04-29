@@ -1,4 +1,3 @@
-import asyncio
 import dataclasses
 
 import deserialize
@@ -16,9 +15,15 @@ logger = get_logger(__name__)
 
 
 class LaunchNotificationTask(AbstractTask):
-    def __init__(self, jraze_api: JrazeApi, messaging_task_queue: TasksDispatcher):
+    def __init__(
+        self,
+        jraze_api: JrazeApi,
+        fcm_messaging_task_queue: TasksDispatcher,
+        apns_messaging_task_queue: TasksDispatcher,
+    ):
         self.jraze_api: JrazeApi = jraze_api
-        self.messaging_task_queue = messaging_task_queue
+        self.fcm_messaging_task_queue = fcm_messaging_task_queue
+        self.apns_messaging_task_queue = apns_messaging_task_queue
 
     async def run(self, kwargs: dict):
         logger.debug(kwargs)
@@ -55,13 +60,15 @@ class LaunchNotificationTask(AbstractTask):
                 tokens[device.send_platform][device.device_platform].append(device.push_token)
                 device_ids.append(device.id)
 
-            tasks = []
+            tasks = {
+                SendPlatform.APNS: [],
+                SendPlatform.FCM: [],
+            }
             for send_platform in send_platforms:
                 for device_platform in device_platforms:
-                    tasks.append({
+                    tasks[send_platform].append({
                         'task': MessagingTask.SEND_PUSH_MESSAGE,
                         'kwargs': {
-                            'send_platform': send_platform,
                             'notification_id': str(notification.uuid),
                             'push_tokens': tokens[send_platform][device_platform],
                             'device_platform': device_platform,
@@ -73,18 +80,29 @@ class LaunchNotificationTask(AbstractTask):
                         }
                     })
 
-            await asyncio.gather(
-                self.jraze_api.log_notification(
-                    device_ids=device_ids,
-                    notification_id=notification.id,
-                ),
-                self.messaging_task_queue.apply_tasks(
+            if tasks[SendPlatform.FCM]:
+                await self.fcm_messaging_task_queue.apply_tasks(
                     tasks=[
                         TaskIn(
                             task=task,
                             queue_name='MESSAGING_QUEUE',
                         )
-                        for task in tasks
+                        for task in tasks[SendPlatform.FCM]
                     ],
                 )
+
+            if tasks[SendPlatform.APNS]:
+                await self.fcm_messaging_task_queue.apply_tasks(
+                    tasks=[
+                        TaskIn(
+                            task=task,
+                            queue_name='MESSAGING_QUEUE',
+                        )
+                        for task in tasks[SendPlatform.APNS]
+                    ],
+                )
+
+            await self.jraze_api.log_notification(
+                device_ids=device_ids,
+                notification_id=notification.id,
             )

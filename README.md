@@ -56,6 +56,8 @@ $ docker-compose -f local-docker-compose.yml up -d
   /apiserver
   /worker
     /messaging
+      /apns
+      /fcm
     /notification
 ```
 
@@ -80,16 +82,17 @@ $ docker-compose -f local-docker-compose.yml up -d
 ### Sequence
 ```
       _________________________
-     v          _____          |                      _____
-[API server] --(____()----> [Notification worker] ---(____()---> [Messaging worker]
-                            ^                  ______                  |
-                            +-----------------(_____()-----------------+
+     v          _____          |                       _____
+[API server] --(____()----> [Notification worker] ----(____()--->  [Messaging(APNS) worker] ---+
+                            ^                      +--(____()--->  [Messaging(FCM) worker] ----+
+                            |                  ______                                          |
+                            +-----------------(_____()-----------------------------------------+
 ```
 
 #### Scale out-able instance
 - APIServer
 - NotificationWorker
-- MessagingWorker
+- MessagingWorker(FCM/APNS)
 
 ## Trouble shooting
 

@@ -10,14 +10,11 @@ from jasyncq.repository.tasks import TaskRepository
 
 from common.logger.logger import get_logger
 from common.structure.job.messaging import MessagingJob, MessagingTask
-from worker.messaging.config import config
-from worker.messaging.external.apns.abstract import AbstractAPNs
-from worker.messaging.external.apns.v3 import APNsV3
-from worker.messaging.external.fcm.abstract import AbstractFCM
-from worker.messaging.external.fcm.legacy import FCMClientLegacy
-from worker.messaging.external.fcm.v1 import FCMClientV1
-from worker.messaging.task import AbstractTask
-from worker.messaging.task.send_push_message import SendPushMessageTask
+from worker.messaging.apns.external.apns.v3 import APNsV3
+from worker.messaging.apns.task.send_push_message import SendPushMessageTask
+from worker.messaging.apns.config import config
+from worker.messaging.apns.external.apns.abstract import AbstractAPNs
+from worker.messaging.apns.task import AbstractTask
 
 logger = get_logger(__name__)
 
@@ -44,7 +41,7 @@ class Replica:
 
         messaging_task_queue_repository = TaskRepository(
             pool=self.task_queue_pool,
-            topic_name='MESSAGING_TOPIC',
+            topic_name='APNS_MESSAGING_TOPIC',
         )
         loop.run_until_complete(messaging_task_queue_repository.initialize())
         self.messaging_task_queue = TasksDispatcher(
@@ -60,17 +57,15 @@ class Replica:
             repository=notification_queue_repository
         )
 
-        fcm: AbstractFCM = self.create_fcm_client()
         apns: AbstractAPNs = self.create_apns_client()
         self.tasks: Dict[MessagingTask, AbstractTask] = {
             MessagingTask.SEND_PUSH_MESSAGE: SendPushMessageTask(
-                fcm=fcm,
                 apns=apns,
                 notification_task_queue=notification_queue_dispatcher,
             )
         }
 
-        logger.debug(f'Worker {pid} up')
+        logger.info(f'Worker {pid} up')
         loop.run_until_complete(self.job())
 
     def create_apns_client(self) -> AbstractAPNs:
@@ -84,18 +79,9 @@ class Replica:
             cert_type=apns_config.cert_type,
         )
 
-    def create_fcm_client(self) -> AbstractFCM:
-        fcm_config = config.push_worker.fcm
-        if config.push_worker.fcm.client == 'legacy':
-            return FCMClientLegacy(fcm_config.legacy.server_key)
-        elif config.push_worker.fcm.client == 'v1':
-            return FCMClientV1(fcm_config.v1.project_id, fcm_config.v1.key_file_name)
-        else:
-            raise ValueError(f'fcm client not allow: {config.push_worker.fcm.client}')
-
     async def process_job(self, job: MessagingJob):  # real worker if job published
         try:
-            logger.debug(job)
+            logger.info(job)
             try:
                 task = self.tasks[job.task]
             except KeyError as e:

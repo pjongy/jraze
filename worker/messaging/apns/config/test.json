@@ -11,14 +11,6 @@
         "topic": "test"
       },
       "cert_type": "pem"
-    },
-    "fcm": {
-      "legacy": {
-        "server_key": "test"
-      },
-      "v1": {
-        "project_id": "test"
-      }
-    },
+    }
   }
 }

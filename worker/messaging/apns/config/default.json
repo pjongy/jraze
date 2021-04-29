@@ -1,0 +1,20 @@
+{
+  "push_worker": {
+    "apns": {
+      "pem_cert": {
+        "file_name": ""
+      },
+      "p8_cert": {
+        "file_name": "",
+        "key_id": "",
+        "team_id": "",
+        "topic": ""
+      },
+      "cert_type": "pem"
+    },
+    "pool_size": 5,
+    "task_queue": {
+      "database": "jraze_task_queue"
+    }
+  }
+}
