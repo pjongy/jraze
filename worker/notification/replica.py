@@ -24,46 +24,23 @@ class Replica:
     TASK_FETCH_SIZE = 300
 
     def __init__(self, pid):
-        loop = asyncio.get_event_loop()
-
         task_queue_config = config.notification_worker.task_queue
-        self.task_queue_pool = loop.run_until_complete(
-            aiomysql.create_pool(
-                host=task_queue_config.host,
-                port=task_queue_config.port,
-                user=task_queue_config.user,
-                password=task_queue_config.password,
-                db=task_queue_config.database,
-                loop=loop,
-                autocommit=False,
-            )
-        )
-        notification_queue_repository = TaskRepository(
-            pool=self.task_queue_pool,
-            topic_name='NOTIFICATION_TOPIC',
-        )
-        loop.run_until_complete(notification_queue_repository.initialize())
-        self.notification_queue_dispatcher = TasksDispatcher(
-            repository=notification_queue_repository
-        )
         self.jraze_api = JrazeApi()
 
-        apns_messaging_task_queue_repository = TaskRepository(
-            pool=self.task_queue_pool,
-            topic_name='APNS_MESSAGING_TOPIC',
-        )
-        loop.run_until_complete(apns_messaging_task_queue_repository.initialize())
-        apns_messaging_task_queue = TasksDispatcher(
-            repository=apns_messaging_task_queue_repository,
-        )
-        fcm_messaging_task_queue_repository = TaskRepository(
-            pool=self.task_queue_pool,
-            topic_name='FCM_MESSAGING_TOPIC',
-        )
-        loop.run_until_complete(fcm_messaging_task_queue_repository.initialize())
-        fcm_messaging_task_queue = TasksDispatcher(
-            repository=fcm_messaging_task_queue_repository,
-        )
+        loop = asyncio.get_event_loop()
+        self.notification_queue_dispatcher = loop.run_until_complete(self._get_task_dispatcher(
+            task_queue_config=task_queue_config,
+            topic='NOTIFICATION_TOPIC',
+        ))
+        apns_messaging_task_queue = loop.run_until_complete(self._get_task_dispatcher(
+            task_queue_config=task_queue_config,
+            topic='APNS_MESSAGING_TOPIC',
+        ))
+        fcm_messaging_task_queue = loop.run_until_complete(self._get_task_dispatcher(
+            task_queue_config=task_queue_config,
+            topic='FCM_MESSAGING_TOPIC',
+        ))
+
         self.tasks: Dict[NotificationTask, AbstractTask] = {
             NotificationTask.LAUNCH_NOTIFICATION: LaunchNotificationTask(
                 jraze_api=self.jraze_api,
@@ -76,6 +53,28 @@ class Replica:
         }
         logger.info(f'Worker {pid} up')
         loop.run_until_complete(self.job())
+
+    async def _get_task_dispatcher(
+        self,
+        task_queue_config: config.NotificationWorker.MySQL,
+        topic: str,
+    ) -> TasksDispatcher:
+        task_queue_pool = await aiomysql.create_pool(
+            host=task_queue_config.host,
+            port=task_queue_config.port,
+            user=task_queue_config.user,
+            password=task_queue_config.password,
+            db=task_queue_config.database,
+            autocommit=False,
+        )
+        notification_queue_repository = TaskRepository(
+            pool=task_queue_pool,
+            topic_name=topic,
+        )
+        await notification_queue_repository.initialize()
+        return TasksDispatcher(
+            repository=notification_queue_repository
+        )
 
     async def process_job(self, job: NotificationJob):  # real worker if job published
         try:
