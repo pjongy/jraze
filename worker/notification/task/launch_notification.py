@@ -92,7 +92,7 @@ class LaunchNotificationTask(AbstractTask):
                 )
 
             if tasks[SendPlatform.APNS]:
-                await self.fcm_messaging_task_queue.apply_tasks(
+                await self.apns_messaging_task_queue.apply_tasks(
                     tasks=[
                         TaskIn(
                             task=task,

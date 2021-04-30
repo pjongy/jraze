@@ -103,7 +103,6 @@ class Replica:
             )
 
             tasks: List[TaskOut] = [*pending_tasks, *scheduled_tasks]
-            logger.info('running')
             if not tasks:
                 # NOTE(pjongy): Relax wasting
                 await asyncio.sleep(1)
